@@ -21,11 +21,11 @@ from src.utils.pylogger import get_pylogger
 log = get_pylogger(__name__)
 
 # Hydra normally resolves a relative config_path against the calling module's
-# __file__ -- but that detection uses sys.modules['__main__'], which for the
+# __file__. That detection uses sys.modules['__main__'], which for the
 # installed `tts-train` console script (see [project.scripts] in
 # pyproject.toml) is setuptools' tiny generated launcher, not this file. That
 # breaks relative resolution (misread as a config *package* to import rather
-# than a directory) for the entry point while `python -m src.train` /
+# than a directory) for the entry point, while `python -m src.train` and
 # `python src/train.py` both still work fine. An absolute path sidesteps the
 # ambiguity entirely and works identically for every invocation style.
 _CONFIG_DIR = str(pathlib.Path(__file__).resolve().parent.parent / "configs")
@@ -64,14 +64,14 @@ def main(cfg: DictConfig) -> None:
     datamodule = hydra.utils.instantiate(cfg.data)
     datamodule.setup()
 
-    # extension point (e.g. n_symbols, computed from the persisted text-frontend
-    # vocab) -- see TTSDataModule.stats. Requires scripts/preprocess.py to have
+    # Extension point (e.g. n_symbols, computed from the persisted text-frontend
+    # vocab). See TTSDataModule.stats. Requires scripts/preprocess.py to have
     # already run against data.preprocessed_dir.
     stats = datamodule.stats
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     # _recursive_=False: cfg.model.optimizer / cfg.model.scheduler / cfg.model.network
-    # carry their own _target_ but must NOT be eagerly instantiated here --
+    # carry their own _target_ but must not be eagerly instantiated here.
     # TTSLightningModule instantiates the network itself, and the optimizer once
     # model.parameters() exists.
     model = hydra.utils.instantiate(cfg.model, _recursive_=False, **stats)

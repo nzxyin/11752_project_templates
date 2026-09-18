@@ -20,15 +20,15 @@ BigVGAN itself adapts code from [jik876/hifi-gan](https://github.com/jik876/hifi
   requiring its directory to be manually added to `sys.path`.
 - `bigvgan.py`: the optional fused CUDA kernel path
   (`alias_free_activation/cuda/`, which JIT-compiles via `nvcc`+`ninja`) is not
-  vendored -- `use_cuda_kernel=True` now raises `NotImplementedError` with a
+  vendored. `use_cuda_kernel=True` now raises `NotImplementedError` with a
   pointer to the upstream repo instead of silently failing an import.
   `use_cuda_kernel=False` (the default) is functionally identical to upstream
   and is all `src/vocoders/bigvgan_vocoder.py` uses.
 - `utils.py`: trimmed to just `init_weights`/`get_padding` (the two functions
-  the generator needs); upstream's training-only checkpoint-scanning and
+  the generator needs). Upstream's training-only checkpoint-scanning and
   matplotlib-plotting helpers are dropped to avoid pulling in unneeded deps.
-- `meldataset.py`'s `mel_spectrogram` function is *not* copied verbatim here --
-  it's reproduced (same math, adjustable defaults) as `bigvgan_mel_spectrogram`
+- `meldataset.py`'s `mel_spectrogram` function is *not* copied verbatim here.
+  It is reproduced (same math, adjustable defaults) as `bigvgan_mel_spectrogram`
   in `src/vocoders/mel.py`.
 
 No other logic was changed. See the BigVGAN repository for its full license

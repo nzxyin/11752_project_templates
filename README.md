@@ -4,21 +4,22 @@ A [generic TTS front-end](../../tree/master) (see that branch's README for the
 full picture), tailored to implementing **Matcha-TTS**: Mehta, Tu, Beskow,
 Székely & Henter, ["Matcha-TTS: A fast TTS architecture with conditional flow
 matching"](https://arxiv.org/abs/2309.03199) (ICASSP 2024). Built on
-[Hydra](https://hydra.cc/) + [PyTorch Lightning](https://lightning.ai/), it
+[Hydra](https://hydra.cc/) and [PyTorch Lightning](https://lightning.ai/), it
 provides everything *around* the model: LJSpeech preprocessing at its
-**native 22050 Hz**, a training/validation/testing loop, checkpointing +
-TensorBoard/W&B logging, DDP/multi-node, text-to-mel-to-waveform inference
-wired up to the official **BigVGANv2 22kHz** vocoder checkpoint, and
+**native 22050 Hz**, a training/validation/testing loop, checkpointing and
+TensorBoard/W&B logging, DDP/multi-node support, text-to-mel-to-waveform
+inference wired to the official **BigVGANv2 22kHz** vocoder checkpoint, and
 objective evaluation via the [VERSA](https://github.com/wavlab-speech/versa)
-toolkit -- so you can focus on the model itself and get training, testing,
-inference, and evaluation for free.
+toolkit, so the model itself is what remains to be built, with training,
+testing, inference, and evaluation already in place.
 
 **This template does not implement Matcha-TTS.** `src/models/matcha.py`
-(`MatchaTTSPlaceholder`) is a minimal, deliberately-naive stand-in (no
+(`MatchaTTSPlaceholder`) is a minimal, deliberately naive stand-in (no
 Monotonic Alignment Search, no duration predictor, no flow-matching decoder)
-that exists only so every command below actually runs out of the box, as an
-integration smoke test -- see [Implementing Matcha-TTS](#implementing-matcha-tts)
-below for the shape of what's missing.
+that exists only so every command below runs out of the box, as an
+integration smoke test. See
+[Implementing Matcha-TTS](#implementing-matcha-tts) below for the shape of
+what is missing.
 
 ## Project layout
 
@@ -41,8 +42,8 @@ src/
                              AdamW(fused)+Hydra-instantiated scheduler, checkpoint hparams
   models/
     base.py                  BaseTTSModel: the contract a real model must satisfy
-    matcha.py                  PLACEHOLDER model (embedding + tiny Transformer encoder +
-                               naive length-matched linear mel projection) -- replace this
+    matcha.py                  PLACEHOLDER model (embedding, tiny Transformer encoder,
+                               naive length-matched linear mel projection), to be replaced
   data/
     frontends/                pluggable text -> token frontends (see below)
     normalization.py          optional text-normalization pre-pass (not needed for LJSpeech)
@@ -50,8 +51,8 @@ src/
     datamodule.py               TTSDataModule (+ length-bucketed batch sampler)
   vocoders/                  mel -> waveform via BigVGANv2 22kHz
     mel.py                     bit-exact mel extraction matching that checkpoint's convention
-    bigvgan/                   vendored BigVGAN generator (NVIDIA/BigVGAN, MIT) -- see its
-                                THIRD_PARTY_NOTICES.md
+    bigvgan/                   vendored BigVGAN generator (NVIDIA/BigVGAN, MIT; see
+                                THIRD_PARTY_NOTICES.md)
     bigvgan_vocoder.py          BigVGANVocoder: load a HF Hub checkpoint, run mel -> wav
   utils/                      mask/padding helpers, mel plotting, rank-zero logger
 
@@ -64,7 +65,7 @@ scripts/
                              uv tool: tts-evaluate
 ```
 
-`src/train.py` is the `tts-train` uv tool -- see [Setup](#setup-uv) for all four.
+`src/train.py` is the `tts-train` uv tool. See [Setup](#setup-uv) for all four.
 
 ## The model contract
 
@@ -105,20 +106,20 @@ scheduler: { _target_: torch.optim.lr_scheduler.OneCycleLR, ... }
 ```
 
 `src/lightning_module.py`, the dataset/datamodule, and all four CLI scripts
-need **no changes** -- `TTSLightningModule` only ever calls `self.model(batch)`
+need **no changes**. `TTSLightningModule` only ever calls `self.model(batch)`
 and `self.model.synthesize(...)`, so any conforming implementation slots in by
 switching `model=<name>` on the CLI (`uv run tts-train model=matcha`).
 
-- **FastSpeech2**: duration predictor + length regulator, all internal to the
-  subclass; `forward` returns `mel_pred` for the default validation image.
-- **Matcha-TTS**: Monotonic-Alignment-Search duration + a flow-matching
-  decoder -- fits cleanly since alignment/duration stays fully internal.
-- **F5-TTS**: set `requires_reference_audio = True`; `scripts/synthesize.py`
+- **FastSpeech2**: duration predictor and length regulator, all internal to
+  the subclass; `forward` returns `mel_pred` for the default validation image.
+- **Matcha-TTS**: Monotonic-Alignment-Search duration with a flow-matching
+  decoder, which fits cleanly since alignment and duration stay fully internal.
+- **F5-TTS**: set `requires_reference_audio = True`. `scripts/synthesize.py`
   then requires `--ref_audio`/`--ref_text` and forwards `ref_mel`/`ref_text_ids`
-  as `synthesize(**kwargs)`. A diffusion/flow model whose training step
-  doesn't produce a cheap mel sample can simply omit `"mel_pred"` from
-  `forward`'s return dict -- `tts-evaluate`'s full `synthesize()` call is the
-  real quality check for those.
+  as `synthesize(**kwargs)`. A diffusion or flow model whose training step
+  does not produce a cheap mel sample can omit `"mel_pred"` from `forward`'s
+  return dict; `tts-evaluate`'s full `synthesize()` call is the real quality
+  check for those cases.
 
 ## Text frontends
 
@@ -132,11 +133,12 @@ auto-detected at inference/evaluation time from `preprocess_config.json` +
 | `g2p_en` (default) | ARPAbet-39 (fixed) | none beyond the `preprocess`/`synthesize` extras | English only, via `g2p_en`/CMUdict |
 | `phonemizer` | IPA (data-driven, persisted to `symbols.json`) | `espeak-ng` system binary | what Matcha-TTS-style implementations typically expect; multi-lingual |
 
-Optionally normalize text before phonemization with `--normalize {none,nemo}`
-(`src/data/normalization.py`) -- **not needed for LJSpeech**, whose
-`metadata.csv` transcripts are already normalized; this is an extension point
-for a messier, non-LJSpeech dataset later. The `nemo` backend needs
-Linux/WSL/conda-forge (its `pynini` dependency has no native Windows wheels).
+Text can optionally be normalized before phonemization with
+`--normalize {none,nemo}` (`src/data/normalization.py`). **This is not needed
+for LJSpeech**, whose `metadata.csv` transcripts are already normalized; it is
+an extension point for a messier, non-LJSpeech dataset. The `nemo` backend
+requires Linux, WSL, or conda-forge, since its `pynini` dependency has no
+native Windows wheels.
 
 ## Setup ([uv](https://docs.astral.sh/uv/))
 
@@ -145,9 +147,9 @@ git clone -b matcha-tts https://github.com/nzxyin/11752_project_templates.git
 cd 11752_project_templates
 ```
 
-If you don't have [uv](https://docs.astral.sh/uv/) yet, install it first (see
-[uv's installation guide](https://docs.astral.sh/uv/getting-started/installation/)
--- one-liners for Linux/macOS/Windows are there), then sync dependencies:
+If uv is not already installed, install it first (see [uv's installation
+guide](https://docs.astral.sh/uv/getting-started/installation/) for
+Linux/macOS/Windows one-liners), then sync dependencies:
 
 ```bash
 uv sync --extra preprocess --extra synthesize --extra vocoder
@@ -178,8 +180,8 @@ Optional extras, add as needed:
     and add it to `PATH`; if `phonemizer` still can't find it, set
     `PHONEMIZER_ESPEAK_LIBRARY` to the path of `libespeak-ng.dll`.
 - `--extra normalize`: `nemo_text_processing` (`--normalize nemo`). **Not
-  needed for LJSpeech.** Requires Linux, WSL, or conda-forge -- `pynini` has
-  no native Windows wheels, so this extra will fail to install on native Windows.
+  needed for LJSpeech.** Requires Linux, WSL, or conda-forge, since `pynini`
+  has no native Windows wheels; this extra fails to install on native Windows.
 - `--extra vocoder`: actually loading the BigVGANv2 pretrained checkpoint
   (`huggingface_hub`) to turn a predicted mel into audio. Not needed for
   training or preprocessing (`src/vocoders/mel.py`'s mel extraction only needs
@@ -193,9 +195,9 @@ Optional extras, add as needed:
 build, follow [uv's PyTorch guide](https://docs.astral.sh/uv/guides/integration/pytorch/)
 (e.g. add the appropriate `[[tool.uv.index]]` for your CUDA version) before syncing.
 
-Each git branch's `pyproject.toml`/`uv.lock` is independent -- if you implement
-FastSpeech2/Matcha-TTS/F5-TTS on its own branch with extra dependencies
-(`uv add numba scipy`, say), `uv sync` on that branch installs exactly what
+Each git branch's `pyproject.toml`/`uv.lock` is independent. If FastSpeech2,
+Matcha-TTS, or F5-TTS is implemented on its own branch with extra dependencies
+(e.g. `uv add numba scipy`), `uv sync` on that branch installs exactly what
 that model needs without touching this one.
 
 > If you do call the underlying script directly instead of the tool, invoke
@@ -212,7 +214,7 @@ Download [LJSpeech-1.1](https://keithito.com/LJ-Speech-Dataset/) and extract it 
 uv run tts-preprocess --ljspeech_dir data/raw/LJSpeech-1.1 --out_dir data/preprocessed
 ```
 
-LJSpeech is kept at its **native 22050 Hz** -- no resampling. Mel-spectrograms
+LJSpeech is kept at its **native 22050 Hz**, with no resampling. Mel-spectrograms
 are extracted matching the exact convention of BigVGANv2's official 22kHz
 checkpoint (`nvidia/bigvgan_v2_22khz_80band_256x`: 80 mels, n_fft=1024,
 hop=256, win=1024) so a model trained to reconstruct these mels sounds right
@@ -237,15 +239,15 @@ Everything is overridable from the CLI (Hydra):
 ```bash
 uv run tts-train trainer.max_steps=50000 data.batch_size=32
 uv run tts-train model.network.hidden=384                  # placeholder model's hyperparams
-uv run tts-train logger=wandb                     # switch TensorBoard -> W&B
+uv run tts-train logger=wandb                     # switch from TensorBoard to W&B
 uv run tts-train logger=both                      # both simultaneously
 uv run tts-train experiment=debug                  # tiny CPU run to check shapes
 uv run tts-train ckpt_path=logs/runs/.../last.ckpt # resume
 ```
 
 Logs and checkpoints land under `logs/runs/<name>/<timestamp>/` (see
-`configs/paths/default.yaml`, `configs/callbacks/default.yaml`, which monitors
-`val/loss` -- the contract's mandatory loss key). View TensorBoard with:
+`configs/paths/default.yaml` and `configs/callbacks/default.yaml`, which
+monitors `val/loss`, the contract's mandatory loss key). View TensorBoard with:
 
 ```bash
 uv run tensorboard --logdir logs/tensorboard
@@ -254,20 +256,20 @@ uv run tensorboard --logdir logs/tensorboard
 ### Optimizer / schedule
 
 Optimizer and scheduler are ordinary Hydra-instantiated objects
-(`configs/model/matcha.yaml`'s `optimizer`/`scheduler` blocks) -- any
+(`configs/model/matcha.yaml`'s `optimizer`/`scheduler` blocks). Any
 `torch.optim` optimizer and `torch.optim.lr_scheduler` scheduler works via
-`_target_`; nothing in `TTSLightningModule` assumes a particular choice.
-Different TTS papers favor different setups (Adam with a Transformer-style
-warmup + inverse-square-root decay, as in the original FastSpeech2/
-Transformer-TTS line of work; plain AdamW with a fixed or linear-warmup
-schedule, common in more recent flow-matching models) -- pick whatever the
-paper you're implementing actually uses, or whatever works for you.
+`_target_`, and nothing in `TTSLightningModule` assumes a particular choice.
+Different TTS papers favor different setups: Adam with a Transformer-style
+warmup and inverse-square-root decay, as in the original FastSpeech2 and
+Transformer-TTS line of work, or plain AdamW with a fixed or linear-warmup
+schedule, common in more recent flow-matching models. Use whatever the paper
+being implemented actually uses, or whatever works.
 
 The placeholder ships AdamW with the fused CUDA kernel
-(`model.optimizer.fused=true`) + a
+(`model.optimizer.fused=true`) and a
 [OneCycleLR](https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html)
 1cycle policy (`model.scheduler`), whose `total_steps` is tied to
-`trainer.max_steps` so one CLI override keeps both in sync -- purely as one
+`trainer.max_steps` so one CLI override keeps both in sync. This is one
 concrete, runnable default, not a recommendation for any particular
 architecture. `TTSLightningModule.configure_optimizers` automatically falls
 back to `fused=false` when training on CPU (e.g. `experiment=debug`), so the
@@ -286,20 +288,20 @@ same config works everywhere without editing it.
 ```bash
 uv run tts-train trainer=ddp                                             # all GPUs on this machine
 torchrun --nnodes=2 --nproc_per_node=8 --node_rank=$RANK --master_addr=$ADDR \
-    -m src.train trainer=ddp trainer.num_nodes=2                          # 2 nodes x 8 GPUs (torchrun needs a module, not the tool)
+    -m src.train trainer=ddp trainer.num_nodes=2                          # 2 nodes, 8 GPUs each (torchrun needs a module, not the tool)
 ```
 
-See `configs/trainer/ddp.yaml` for details. Effective global batch size =
-`data.batch_size * devices * trainer.num_nodes * trainer.accumulate_grad_batches`
--- scale `data.batch_size` down or `model.optimizer.lr` up accordingly. Under
-SLURM, Lightning's `SLURMEnvironment` autodetects node rank/addr/port and
-`trainer=ddp` works unchanged inside an `srun`/`sbatch` script instead of `torchrun`.
+See `configs/trainer/ddp.yaml` for details. Effective global batch size equals
+`data.batch_size * devices * trainer.num_nodes * trainer.accumulate_grad_batches`,
+so scale `data.batch_size` down or `model.optimizer.lr` up accordingly. Under
+SLURM, Lightning's `SLURMEnvironment` autodetects node rank, address, and port,
+and `trainer=ddp` works unchanged inside an `srun`/`sbatch` script instead of `torchrun`.
 
 ## Vocoder
 
-An acoustic model built on this template predicts mel-spectrograms, not
-audio -- turning those into a waveform is a separate vocoder model. This
-template wires up the official pretrained
+An acoustic model built on this template predicts mel-spectrograms, not audio.
+Turning those into a waveform is a separate vocoder model. This template
+wires up the official pretrained
 **[BigVGANv2](https://github.com/NVIDIA/BigVGAN)** (NVIDIA, MIT license) 22kHz
 checkpoint (`nvidia/bigvgan_v2_22khz_80band_256x`): its generator architecture
 is vendored into `src/vocoders/bigvgan/` (see that directory's
@@ -309,7 +311,7 @@ Face Hub without depending on the full NVIDIA/BigVGAN repo.
 
 **Why the mel convention has to match exactly**: BigVGAN was trained on
 mel-spectrograms extracted a specific way (STFT framing, mel filterbank
-normalization, log-compression clamp) -- see `src/vocoders/mel.py`, verified
+normalization, log-compression clamp). See `src/vocoders/mel.py`, verified
 bit-exact against BigVGAN's own reference implementation.
 `scripts/preprocess.py` always extracts training targets this same way, so a
 model trained on this template's preprocessed mels sounds right once vocoded,
@@ -334,7 +336,7 @@ Hugging Face Hub repo id (or a local directory) than BigVGANv2's default
 22kHz checkpoint.
 
 `--model_kwarg key=value` (repeatable, JSON-decoded value) forwards arbitrary
-model-specific inference args into `BaseTTSModel.synthesize(**kwargs)` -- e.g.
+model-specific inference args into `BaseTTSModel.synthesize(**kwargs)`, e.g.
 a Matcha-TTS ODE step count or an F5-TTS `cfg_scale`. If the loaded model sets
 `requires_reference_audio=True` (F5-TTS-style voice cloning), pass
 `--ref_audio <wav>` and `--ref_text "..."`.
@@ -354,8 +356,8 @@ Synthesizes every utterance in `--filelist`, vocodes it, and scores the result
 against LJSpeech's own ground-truth wavs (valid references as-is, since
 preprocessing never resamples away from LJSpeech's native rate). Defaults to
 `configs/versa/cpu.yaml`, VERSA's own lightweight CPU-only metric set (mel
-cepstral distortion, signal metrics, PESQ, STOI -- no large pretrained metric
-models downloaded). Pass `--versa_config` to point at a heavier VERSA config
+cepstral distortion, signal metrics, PESQ, STOI), with no large pretrained
+metric models downloaded. Pass `--versa_config` to point at a heavier VERSA config
 (e.g. one that adds UTMOS/DNSMOS/speaker-similarity) for a slower but more
 thorough evaluation. `--limit N` caps the number of utterances for a quick
 smoke test.
@@ -371,7 +373,7 @@ phonemes -> [text encoder]
              (MAS) durations computed between encoder output and target mel]
          -> [length regulator, using predicted durations at inference]
          -> [U-Net decoder trained with (optimal-transport) conditional flow
-             matching -- predicts a vector field, not the mel directly]
+             matching, predicting a vector field rather than the mel directly]
          -> ODE integration (e.g. a handful of Euler steps) from noise
             -> mel-spectrogram
 ```
@@ -379,32 +381,32 @@ phonemes -> [text encoder]
 A few things this means for fitting it into `BaseTTSModel`
 (`forward(batch) -> dict`, `synthesize(text_ids, src_lens, **kwargs) -> dict`):
 
-- **Alignment is self-contained.** Unlike FastSpeech2, Matcha-TTS doesn't need
-  an external forced aligner or precomputed durations -- MAS runs at train
-  time directly between the encoder output and the ground-truth mel (similar
-  to Glow-TTS/VITS), so `forward()` can compute everything from the batch's
-  `texts`/`mels` as-is; no preprocessing changes needed for this part.
-- **The decoder isn't predicting a mel directly.** Flow matching trains the
+- **Alignment is self-contained.** Unlike FastSpeech2, Matcha-TTS does not
+  need an external forced aligner or precomputed durations. MAS runs at
+  train time directly between the encoder output and the ground-truth mel
+  (similar to Glow-TTS/VITS), so `forward()` can compute everything from the
+  batch's `texts`/`mels` as-is; no preprocessing changes are needed for this part.
+- **The decoder does not predict a mel directly.** Flow matching trains the
   network to predict a vector field along a probability path from noise to
-  data; `forward()`'s `"loss"` is the flow-matching objective (e.g. an
+  data, so `forward()`'s `"loss"` is the flow-matching objective (e.g. an
   OT-CFM regression loss), not a direct mel reconstruction loss like
-  FastSpeech2's. Because of this, a cheap `"mel_pred"` isn't a free byproduct
-  of a training step the way it is for a regression model -- it's fine to
-  omit it and rely on `tts-evaluate`'s full `synthesize()` call (which does
-  run the ODE solver) as the real quality check instead.
+  FastSpeech2's. Because of this, a cheap `"mel_pred"` is not a free
+  byproduct of a training step the way it is for a regression model. It is
+  fine to omit it and rely on `tts-evaluate`'s full `synthesize()` call
+  (which does run the ODE solver) as the real quality check instead.
 - **`synthesize()`'s `**kwargs`** is a natural place for inference-time knobs
   the paper exposes: number of ODE (sampling) steps, temperature, guidance
-  scale, etc. -- forwarded from `scripts/synthesize.py --model_kwarg key=value`.
+  scale, etc., forwarded from `scripts/synthesize.py --model_kwarg key=value`.
 - The vendored `src/vocoders/bigvgan_vocoder.py` and `src/vocoders/mel.py`
-  need no changes -- Matcha-TTS's job is only to predict a mel matching that
+  need no changes. Matcha-TTS's job is only to predict a mel matching that
   convention (`configs/data/ljspeech.yaml`'s `n_mel_channels: 80`).
 
 ## Notes / where to extend
 
-- **A different model**: see [The model contract](#the-model-contract) above --
-  that's the whole point of this template.
-- **Multi-speaker**: set `data.multi_speaker=true`; `MatchaTTSPlaceholder` already
-  demonstrates the pattern (a speaker embedding added to the encoder input) --
+- **A different model**: see [The model contract](#the-model-contract) above.
+  That is the whole point of this template.
+- **Multi-speaker**: set `data.multi_speaker=true`. `MatchaTTSPlaceholder` already
+  demonstrates the pattern (a speaker embedding added to the encoder input);
   a real implementation should do the same, plus a per-speaker `speakers.json`
   during preprocessing (currently LJSpeech-only, single speaker).
 - **A different text frontend / language**: add a new

@@ -13,8 +13,9 @@ from src.vocoders.bigvgan import BigVGAN
 
 class BigVGANVocoder:
     """Feed it mels produced by `src.vocoders.mel.bigvgan_mel_spectrogram` (or an
-    acoustic model trained to reconstruct those) -- other mel conventions will
-    produce degraded or wrong audio, BigVGAN was trained on this one specifically.
+    acoustic model trained to reconstruct those). Other mel conventions
+    produce degraded or wrong audio, since BigVGAN was trained on this one
+    specifically.
     """
 
     def __init__(

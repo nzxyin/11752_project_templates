@@ -27,15 +27,15 @@ preprocess = [
 synthesize = [
     "g2p_en",
 ]
-# Needed for --frontend phonemizer (src/data/frontends/phonemizer_frontend.py) --
-# an alternative IPA text frontend. ALSO requires the espeak-ng system binary
-# (not pip-installable) -- see README.md's Setup section for per-OS install instructions.
+# Needed for --frontend phonemizer (src/data/frontends/phonemizer_frontend.py),
+# an alternative IPA text frontend. Also requires the espeak-ng system binary
+# (not pip-installable). See README.md's Setup section for per-OS install instructions.
 phonemizer = [
     "phonemizer",
 ]
 # Needed for scripts/preprocess.py --normalize nemo (src/data/normalization.py).
 # NOT needed for LJSpeech (its transcripts are already normalized). Linux/WSL/
-# conda-forge only -- its core dependency `pynini` has no native Windows wheels.
+# conda-forge only, since its core dependency `pynini` has no native Windows wheels.
 normalize = [
     "nemo_text_processing",
 ]
@@ -54,7 +54,7 @@ vocoder = [
 # project's own environment if you'd rather run it in an isolated venv.
 evaluate = [
     # Distribution name is "versa-speech-audio-toolkit" (PyPI/build metadata),
-    # importable as "versa" -- scripts/evaluate.py locates it at runtime via
+    # importable as "versa". scripts/evaluate.py locates it at runtime via
     # importlib.util.find_spec("versa").
     "versa-speech-audio-toolkit @ git+https://github.com/wavlab-speech/versa.git",
 ]

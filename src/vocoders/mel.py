@@ -1,16 +1,16 @@
 """Mel-spectrogram extraction, reproducing bit-for-bit the convention BigVGAN's
 official pretrained checkpoints were trained on. This is what makes a mel
-*predicted* by an acoustic model -- trained to reconstruct ground-truth mels
-extracted the same way (see scripts/preprocess.py) -- actually sound right once
+*predicted* by an acoustic model, trained to reconstruct ground-truth mels
+extracted the same way (see scripts/preprocess.py), actually sound right once
 handed to the vocoder.
 
 Ported from NVIDIA/BigVGAN's meldataset.py::mel_spectrogram (MIT license, see
-src/vocoders/bigvgan/THIRD_PARTY_NOTICES.md) -- manual reflect-pad +
+src/vocoders/bigvgan/THIRD_PARTY_NOTICES.md): manual reflect-pad,
 center=False torch.stft, librosa "slaney" mel filterbank, natural log with a
 1e-5 clamp.
 
 Defaults match the 22050 Hz / 80-mel / n_fft=1024 / hop=256 / win=1024 recipe
-of `nvidia/bigvgan_v2_22khz_80band_256x` -- see configs/data/ljspeech.yaml.
+of `nvidia/bigvgan_v2_22khz_80band_256x`. See configs/data/ljspeech.yaml.
 """
 from __future__ import annotations
 

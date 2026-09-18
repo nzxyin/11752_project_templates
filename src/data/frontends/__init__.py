@@ -1,8 +1,9 @@
-"""Text-frontend registry + the loader used by TTSDataModule, scripts/synthesize.py,
-and scripts/evaluate.py to reconstruct whichever frontend a given
-`preprocessed_dir` was built with (recorded in `preprocess_config.json` +
-`symbols.json` by scripts/preprocess.py) -- single source of truth so training
-and inference/evaluation never drift apart.
+"""Text-frontend registry and the loader used by TTSDataModule,
+scripts/synthesize.py, and scripts/evaluate.py to reconstruct whichever
+frontend a given `preprocessed_dir` was built with (recorded in
+`preprocess_config.json` and `symbols.json` by scripts/preprocess.py). This is
+the single source of truth so training and inference/evaluation never drift
+apart.
 """
 from __future__ import annotations
 
