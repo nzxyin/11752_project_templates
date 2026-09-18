@@ -2,6 +2,7 @@
 name = "tts-template"
 version = "0.1.0"
 description = "Hydra + PyTorch Lightning generic front-end for FastSpeech2 / Matcha-TTS / F5-TTS-style acoustic models (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.1",
