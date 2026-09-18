@@ -1,24 +1,24 @@
-# TTS Template (Hydra + PyTorch Lightning)
+# Matcha-TTS Template (Hydra + PyTorch Lightning)
 
-A generic **front-end** for non-autoregressive TTS acoustic models -- think
-FastSpeech2, Matcha-TTS, F5-TTS, or your own architecture -- built on
-[Hydra](https://hydra.cc/) + [PyTorch Lightning](https://lightning.ai/). It
+A [generic TTS front-end](../../tree/master) (see that branch's README for the
+full picture), tailored to implementing **Matcha-TTS**: Mehta, Tu, Beskow,
+Székely & Henter, ["Matcha-TTS: A fast TTS architecture with conditional flow
+matching"](https://arxiv.org/abs/2309.03199) (ICASSP 2024). Built on
+[Hydra](https://hydra.cc/) + [PyTorch Lightning](https://lightning.ai/), it
 provides everything *around* the model: LJSpeech preprocessing at its
 **native 22050 Hz**, a training/validation/testing loop, checkpointing +
 TensorBoard/W&B logging, DDP/multi-node, text-to-mel-to-waveform inference
 wired up to the official **BigVGANv2 22kHz** vocoder checkpoint, and
 objective evaluation via the [VERSA](https://github.com/wavlab-speech/versa)
-toolkit -- so you can drop in a real acoustic model and get training, testing,
+toolkit -- so you can focus on the model itself and get training, testing,
 inference, and evaluation for free.
 
-**This template does not implement a real TTS model.** `src/models/example.py`
-is a minimal, deliberately-naive placeholder (no learned duration modeling)
+**This template does not implement Matcha-TTS.** `src/models/matcha.py`
+(`MatchaTTSPlaceholder`) is a minimal, deliberately-naive stand-in (no
+Monotonic Alignment Search, no duration predictor, no flow-matching decoder)
 that exists only so every command below actually runs out of the box, as an
-integration smoke test. A full working **FastSpeech2** implementation built on
-top of an earlier version of this template lives on the [`fastspeech2`
-branch](../../tree/fastspeech2) -- a useful reference for what a real
-implementation looks like, and a fine starting point if FastSpeech2 is
-specifically what you want.
+integration smoke test -- see [Implementing Matcha-TTS](#implementing-matcha-tts)
+below for the shape of what's missing.
 
 ## Project layout
 
@@ -27,7 +27,7 @@ configs/                 Hydra configs (composable via CLI overrides)
   config.yaml             top-level: composes the groups below
   paths/default.yaml       all filesystem paths, referenced via ${paths.xxx}
   data/ljspeech.yaml        DataModule + batching options
-  model/example.yaml        PLACEHOLDER model + optimizer/scheduler config (see "The model contract")
+  model/matcha.yaml         PLACEHOLDER model + optimizer/scheduler config (see "The model contract")
   trainer/{default,ddp}.yaml   pytorch_lightning.Trainer args (single-device / multi-GPU+node)
   callbacks/default.yaml    checkpointing (monitors val/loss), LR monitor, progress bar
   logger/{tensorboard,wandb,both}.yaml
@@ -41,7 +41,7 @@ src/
                              AdamW(fused)+Hydra-instantiated scheduler, checkpoint hparams
   models/
     base.py                  BaseTTSModel: the contract a real model must satisfy
-    example.py                PLACEHOLDER model (embedding + tiny Transformer encoder +
+    matcha.py                  PLACEHOLDER model (embedding + tiny Transformer encoder +
                                naive length-matched linear mel projection) -- replace this
   data/
     frontends/                pluggable text -> token frontends (see below)
@@ -90,9 +90,9 @@ class BaseTTSModel(nn.Module, abc.ABC):
         """Optional extra validation figures beyond the default mel pair."""
 ```
 
-**To plug in a real model**: write an `nn.Module` subclassing `BaseTTSModel`,
-then add a `configs/model/<name>.yaml` modeled on `configs/model/example.yaml`
-with `network._target_` pointing at it, e.g.:
+**To plug in a real model**: write an `nn.Module` subclassing `BaseTTSModel`
+(e.g. edit `src/models/matcha.py` in place), and point
+`configs/model/matcha.yaml`'s `network._target_` at it, e.g.:
 
 ```yaml
 _target_: src.lightning_module.TTSLightningModule
@@ -244,15 +244,25 @@ uv run tensorboard --logdir logs/tensorboard
 
 ### Optimizer / schedule
 
-`configs/model/example.yaml` ships AdamW with the fused CUDA kernel
+Optimizer and scheduler are ordinary Hydra-instantiated objects
+(`configs/model/matcha.yaml`'s `optimizer`/`scheduler` blocks) -- any
+`torch.optim` optimizer and `torch.optim.lr_scheduler` scheduler works via
+`_target_`; nothing in `TTSLightningModule` assumes a particular choice.
+Different TTS papers favor different setups (Adam with a Transformer-style
+warmup + inverse-square-root decay, as in the original FastSpeech2/
+Transformer-TTS line of work; plain AdamW with a fixed or linear-warmup
+schedule, common in more recent flow-matching models) -- pick whatever the
+paper you're implementing actually uses, or whatever works for you.
+
+The placeholder ships AdamW with the fused CUDA kernel
 (`model.optimizer.fused=true`) + a
 [OneCycleLR](https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html)
 1cycle policy (`model.scheduler`), whose `total_steps` is tied to
-`trainer.max_steps` so one CLI override keeps both in sync.
-`TTSLightningModule.configure_optimizers` automatically falls back to
-`fused=false` when training on CPU (e.g. `experiment=debug`), so the same config
-works everywhere without editing it. A real model's config can use whatever
-optimizer/scheduler it wants -- this is just what the placeholder ships with.
+`trainer.max_steps` so one CLI override keeps both in sync -- purely as one
+concrete, runnable default, not a recommendation for any particular
+architecture. `TTSLightningModule.configure_optimizers` automatically falls
+back to `fused=false` when training on CPU (e.g. `experiment=debug`), so the
+same config works everywhere without editing it.
 
 > **Resuming**: OneCycleLR's checkpointed state (including `total_steps`)
 > overwrites whatever the new run's config says, so resuming with a *different*
@@ -341,11 +351,50 @@ models downloaded). Pass `--versa_config` to point at a heavier VERSA config
 thorough evaluation. `--limit N` caps the number of utterances for a quick
 smoke test.
 
+## Implementing Matcha-TTS
+
+`src/models/matcha.py`'s `MatchaTTSPlaceholder` is where the real model goes.
+From the paper, Matcha-TTS is:
+
+```
+phonemes -> [text encoder]
+         -> [duration predictor, trained against Monotonic Alignment Search
+             (MAS) durations computed between encoder output and target mel]
+         -> [length regulator, using predicted durations at inference]
+         -> [U-Net decoder trained with (optimal-transport) conditional flow
+             matching -- predicts a vector field, not the mel directly]
+         -> ODE integration (e.g. a handful of Euler steps) from noise
+            -> mel-spectrogram
+```
+
+A few things this means for fitting it into `BaseTTSModel`
+(`forward(batch) -> dict`, `synthesize(text_ids, src_lens, **kwargs) -> dict`):
+
+- **Alignment is self-contained.** Unlike FastSpeech2, Matcha-TTS doesn't need
+  an external forced aligner or precomputed durations -- MAS runs at train
+  time directly between the encoder output and the ground-truth mel (similar
+  to Glow-TTS/VITS), so `forward()` can compute everything from the batch's
+  `texts`/`mels` as-is; no preprocessing changes needed for this part.
+- **The decoder isn't predicting a mel directly.** Flow matching trains the
+  network to predict a vector field along a probability path from noise to
+  data; `forward()`'s `"loss"` is the flow-matching objective (e.g. an
+  OT-CFM regression loss), not a direct mel reconstruction loss like
+  FastSpeech2's. Because of this, a cheap `"mel_pred"` isn't a free byproduct
+  of a training step the way it is for a regression model -- it's fine to
+  omit it and rely on `tts-evaluate`'s full `synthesize()` call (which does
+  run the ODE solver) as the real quality check instead.
+- **`synthesize()`'s `**kwargs`** is a natural place for inference-time knobs
+  the paper exposes: number of ODE (sampling) steps, temperature, guidance
+  scale, etc. -- forwarded from `scripts/synthesize.py --model_kwarg key=value`.
+- The vendored `src/vocoders/bigvgan_vocoder.py` and `src/vocoders/mel.py`
+  need no changes -- Matcha-TTS's job is only to predict a mel matching that
+  convention (`configs/data/ljspeech.yaml`'s `n_mel_channels: 80`).
+
 ## Notes / where to extend
 
 - **A different model**: see [The model contract](#the-model-contract) above --
   that's the whole point of this template.
-- **Multi-speaker**: set `data.multi_speaker=true`; `ExampleTTSModel` already
+- **Multi-speaker**: set `data.multi_speaker=true`; `MatchaTTSPlaceholder` already
   demonstrates the pattern (a speaker embedding added to the encoder input) --
   a real implementation should do the same, plus a per-speaker `speakers.json`
   during preprocessing (currently LJSpeech-only, single speaker).

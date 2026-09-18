@@ -22,4 +22,4 @@ model:
     hidden: 64
     ffn_dim: 128
 
-name: tts_debug
+name: matcha_debug

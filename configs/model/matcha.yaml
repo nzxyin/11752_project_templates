@@ -1,16 +1,19 @@
-# PLACEHOLDER model config -- src.models.example.ExampleTTSModel is embedding +
-# a tiny Transformer encoder + naive length-matched linear mel projection. It
-# exists purely so `experiment=debug` and scripts/synthesize.py|evaluate.py
-# work end-to-end as a smoke test; it is NOT a real TTS system.
+# PLACEHOLDER for a Matcha-TTS config (Mehta et al., ICASSP 2024,
+# https://arxiv.org/abs/2309.03199). src.models.matcha.MatchaTTSPlaceholder is
+# currently just embedding + a tiny Transformer encoder + naive
+# length-matched linear mel projection -- exists purely so `experiment=debug`
+# and scripts/synthesize.py|evaluate.py work end-to-end as a smoke test; it is
+# NOT real Matcha-TTS (no Monotonic Alignment Search, no duration predictor,
+# no flow-matching decoder). See this repo's README.md ("Implementing
+# Matcha-TTS") for the shape of what's missing.
 #
-# To plug in a real model (FastSpeech2 / Matcha-TTS / F5-TTS / ...): write an
-# nn.Module subclassing src.models.base.BaseTTSModel, then add a new
-# configs/model/<name>.yaml like this one with `network._target_` pointing at
-# it -- src/lightning_module.py (TTSLightningModule) needs no changes.
+# Update `network` below (arch hyperparams: encoder size, duration predictor,
+# flow-matching decoder config, ODE solver steps, ...) as you build out the
+# real model -- src/lightning_module.py (TTSLightningModule) needs no changes.
 _target_: src.lightning_module.TTSLightningModule
 
 network:
-  _target_: src.models.example.ExampleTTSModel
+  _target_: src.models.matcha.MatchaTTSPlaceholder
   # n_symbols is NOT set here -- it's supplied at runtime from the persisted
   # text-frontend vocab (src/data/datamodule.py's TTSDataModule.stats), since
   # it can't be known until scripts/preprocess.py has run.
