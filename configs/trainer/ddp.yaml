@@ -1,0 +1,33 @@
+# Multi-GPU / multi-node training. Select with `trainer=ddp`.
+#
+# Single machine, all visible GPUs:
+#   uv run python -m src.train trainer=ddp
+#
+# Multi-node (N nodes x devices GPUs each), launched per-node with torchrun --
+# NODE_RANK/MASTER_ADDR/MASTER_PORT come from your cluster launcher (torchrun
+# sets them itself; under SLURM, PyTorch Lightning's SLURMEnvironment picks them
+# up automatically instead and this still works unchanged):
+#   torchrun --nnodes=$NUM_NODES --nproc_per_node=$GPUS_PER_NODE --node_rank=$NODE_RANK \
+#       --master_addr=$MASTER_ADDR --master_port=29500 \
+#       -m src.train trainer=ddp trainer.num_nodes=$NUM_NODES
+#
+# Effective global batch size = data.batch_size * devices * num_nodes * trainer.accumulate_grad_batches.
+defaults:
+  - default
+
+accelerator: gpu
+devices: -1        # -1 = use every GPU visible on this node
+num_nodes: 1        # override via CLI (or let SLURM set it) for multi-node
+
+strategy:
+  _target_: pytorch_lightning.strategies.DDPStrategy
+  find_unused_parameters: false   # every submodule (incl. the aligner) gets grad every step -- see src/models/fastspeech2.py
+  gradient_as_bucket_view: true    # reduces memory overhead of gradient bucketing
+
+# BatchNorm1d lives in the optional PostNet (model.postnet.use_postnet) -- sync
+# stats across ranks so per-GPU batch size doesn't skew them. No-op otherwise.
+sync_batchnorm: true
+
+# precision: bf16 is a good default on Ampere+ (A100/H100/4090); use 16-mixed on
+# older GPUs (V100/T4/2080) which lack native bf16.
+precision: bf16-mixed

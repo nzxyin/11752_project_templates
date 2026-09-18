@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# uv
+.python-version
+
+# data / logs / outputs
+data/raw/
+data/preprocessed/
+logs/
+outputs/
+multirun/
+wandb/
+*.ckpt
+*.npy
+*.wav
+
+# editors
+.vscode/
+.idea/

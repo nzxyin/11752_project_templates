@@ -1,0 +1,21 @@
+model_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${paths.ckpt_dir}
+  filename: "step={step:09d}-val_loss={val/loss:.4f}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 5
+  save_last: true
+  every_n_train_steps: 1000
+  auto_insert_metric_name: false
+
+lr_monitor:
+  _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  logging_interval: step
+
+model_summary:
+  _target_: pytorch_lightning.callbacks.RichModelSummary
+  max_depth: 2
+
+progress_bar:
+  _target_: pytorch_lightning.callbacks.RichProgressBar

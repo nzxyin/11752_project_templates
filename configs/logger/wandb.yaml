@@ -1,0 +1,9 @@
+# Selected via `logger=wandb`. Requires `wandb login` once beforehand.
+wandb:
+  _target_: pytorch_lightning.loggers.WandbLogger
+  project: fastspeech2
+  entity: null
+  name: ${name}
+  save_dir: ${paths.log_dir}
+  log_model: false
+  offline: false

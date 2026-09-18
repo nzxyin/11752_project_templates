@@ -1,0 +1,34 @@
+# DataModule config. _target_ is resolved by hydra.utils.instantiate in src/train.py.
+# Assumes scripts/preprocess.py has already produced, under preprocessed_dir:
+#   train.txt, val.txt          -- filelists, one utterance per line:
+#                                   "basename|speaker|{frontend-specific token string}|raw_text"
+#   mel/                          -- per-utterance mel .npy files
+#   speakers.json                 -- {speaker_name: speaker_id}
+#   symbols.json, preprocess_config.json -- text-frontend vocab + recipe used,
+#                                   loaded by src/data/frontends to match training and inference
+_target_: src.data.datamodule.TTSDataModule
+
+preprocessed_dir: ${paths.preprocessed_dir}
+train_filelist: train.txt
+val_filelist: val.txt
+
+batch_size: 16
+num_workers: 4
+pin_memory: true
+
+# group utterances of similar length together, then shuffle groups -- cuts padding waste
+sort: true
+drop_last: true
+# number of "sort groups" per shuffled batch chunk (ming024-style bucket batching)
+batch_group_size: 4
+
+# 22050 Hz (LJSpeech's native rate) / 80-mel / n_fft=1024 / hop=256 / win=1024:
+# the convention BigVGANv2's official 22kHz checkpoint
+# (nvidia/bigvgan_v2_22khz_80band_256x) was trained on, matched by
+# scripts/preprocess.py. Only change this if you're vocoding with something
+# else -- and if you do, also update scripts/preprocess.py's
+# SAMPLING_RATE/N_FFT/HOP_LENGTH/WIN_LENGTH/N_MEL_CHANNELS/MEL_FMAX to match,
+# and re-preprocess.
+n_mel_channels: 80
+
+multi_speaker: false

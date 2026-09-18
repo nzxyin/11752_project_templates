@@ -1,0 +1,4 @@
+# Log to TensorBoard and W&B simultaneously. Select with `logger=both`.
+defaults:
+  - tensorboard
+  - wandb

@@ -1,0 +1,79 @@
+[project]
+name = "tts-template"
+version = "0.1.0"
+description = "Hydra + PyTorch Lightning generic front-end for FastSpeech2 / Matcha-TTS / F5-TTS-style acoustic models (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1",
+    "torchaudio>=2.1",
+    "pytorch-lightning>=2.1",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "rich>=13.0",              # RichProgressBar / RichModelSummary callbacks
+    "numpy",
+    "librosa>=0.10",
+    "soundfile",                # scripts/synthesize.py, scripts/evaluate.py: writing .wav output
+    "matplotlib",
+    "tensorboard",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+# Needed for scripts/preprocess.py's default --frontend g2p_en (ARPAbet text -> phoneme frontend).
+preprocess = [
+    "g2p_en",
+]
+# Needed for scripts/synthesize.py's default text frontend.
+synthesize = [
+    "g2p_en",
+]
+# Needed for --frontend phonemizer (src/data/frontends/phonemizer_frontend.py) --
+# an alternative IPA text frontend. ALSO requires the espeak-ng system binary
+# (not pip-installable) -- see README.md's Setup section for per-OS install instructions.
+phonemizer = [
+    "phonemizer",
+]
+# Needed for scripts/preprocess.py --normalize nemo (src/data/normalization.py).
+# NOT needed for LJSpeech (its transcripts are already normalized). Linux/WSL/
+# conda-forge only -- its core dependency `pynini` has no native Windows wheels.
+normalize = [
+    "nemo_text_processing",
+]
+wandb = [
+    "wandb",
+]
+# Needed to actually load the BigVGANv2 pretrained checkpoint for mel -> waveform
+# vocoding (src/vocoders/, scripts/synthesize.py, scripts/evaluate.py). Not
+# needed for training or preprocessing (src/vocoders/mel.py's mel extraction
+# only needs torch/torchaudio/librosa, already core deps).
+vocoder = [
+    "huggingface_hub>=0.26",   # src/vocoders/bigvgan/bigvgan.py targets the post-0.26 hf_hub_download signature
+]
+# Needed for scripts/evaluate.py (objective metrics via the VERSA toolkit).
+# Invoked as a subprocess, so this never needs to be importable from this
+# project's own environment if you'd rather run it in an isolated venv.
+evaluate = [
+    # Distribution name is "versa-speech-audio-toolkit" (PyPI/build metadata),
+    # importable as "versa" -- scripts/evaluate.py locates it at runtime via
+    # importlib.util.find_spec("versa").
+    "versa-speech-audio-toolkit @ git+https://github.com/wavlab-speech/versa.git",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+tts-train = "src.train:main"
+tts-preprocess = "scripts.preprocess:cli"
+tts-synthesize = "scripts.synthesize:cli"
+tts-evaluate = "scripts.evaluate:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["src*", "scripts*"]

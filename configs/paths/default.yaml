@@ -1,0 +1,12 @@
+# Central place for all filesystem paths so every other config can reference
+# them with ${paths.xxx} instead of hard-coding strings.
+root_dir: ${hydra:runtime.cwd}
+
+data_dir: ${paths.root_dir}/data
+raw_dir: ${paths.data_dir}/raw
+preprocessed_dir: ${paths.data_dir}/preprocessed
+
+log_dir: ${paths.root_dir}/logs
+output_dir: ${hydra:runtime.output_dir}
+
+ckpt_dir: ${paths.output_dir}/checkpoints

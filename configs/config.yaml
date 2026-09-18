@@ -1,0 +1,32 @@
+# Top-level Hydra config. Compose overrides on the CLI, e.g.:
+#   python src/train.py data=ljspeech trainer.max_steps=200000 model.network.hidden=384
+defaults:
+  - paths: default
+  - data: ljspeech
+  - model: example
+  - trainer: default
+  - callbacks: default
+  - logger: tensorboard
+  - experiment: null
+  - _self_
+
+# experiment name, used for logging / checkpoint dirs
+name: tts_baseline
+
+seed: 42
+
+# top-level actions
+train: true
+test: false
+
+# path to a checkpoint to resume/fine-tune/test from (null = train from scratch)
+ckpt_path: null
+
+hydra:
+  run:
+    dir: ${paths.log_dir}/runs/${name}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: ${paths.log_dir}/multirun/${name}/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}
+  job:
+    chdir: false

@@ -1,0 +1,25 @@
+# @package _global_
+# Fast, CPU-friendly smoke test.
+# Run with: python src/train.py experiment=debug
+defaults:
+  - override /trainer: default
+
+trainer:
+  accelerator: cpu
+  devices: 1
+  precision: 32-true
+  max_steps: 20
+  val_check_interval: 10
+  log_every_n_steps: 1
+
+data:
+  batch_size: 2
+  num_workers: 0
+
+model:
+  network:
+    encoder_layers: 1
+    hidden: 64
+    ffn_dim: 128
+
+name: tts_debug

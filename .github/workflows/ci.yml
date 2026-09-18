@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.11
+
+      # preprocess/synthesize: g2p_en text frontend. vocoder/phonemizer/normalize/
+      # evaluate are intentionally skipped here -- they need a large HF Hub
+      # checkpoint download, the espeak-ng system binary, or (nemo) a
+      # Linux/WSL-only build, none of which belong in a fast CI smoke test.
+      - name: Sync dependencies
+        run: uv sync --extra preprocess --extra synthesize
+
+      - name: CLI --help sanity checks (must work with zero optional extras)
+        run: |
+          uv run python scripts/preprocess.py --help
+          uv run python scripts/synthesize.py --help
+          uv run python scripts/evaluate.py --help
+
+      - name: Generate a tiny synthetic LJSpeech-shaped dataset
+        run: uv run python tests/make_fake_ljspeech.py
+
+      - name: Preprocess (g2p_en, native 22050 Hz, BigVGANv2 mel convention)
+        run: uv run tts-preprocess --val_size 2
+
+      - name: Train (experiment=debug, CPU, 20 steps)
+        run: uv run tts-train experiment=debug
+
+      - name: Synthesize (mel-only -- no vocoder checkpoint download needed)
+        run: |
+          CKPT=$(find logs/runs -name last.ckpt | head -n1)
+          test -n "$CKPT"
+          echo "Using checkpoint: $CKPT"
+          uv run tts-synthesize --ckpt "$CKPT" \
+            --text "This is a continuous integration smoke test." \
+            --out mel.npy --plot
+          test -f mel.npy
