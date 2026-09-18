@@ -1,18 +1,18 @@
 """PLACEHOLDER for a FastSpeech2 implementation (Ren et al., ICLR 2021,
-https://arxiv.org/abs/2006.04558). Currently just embedding + a tiny
-Transformer encoder + naive length-matched linear mel projection -- exists
-ONLY to make `experiment=debug` and scripts/synthesize.py|evaluate.py runnable
-end-to-end out of the box as an integration smoke test.
+https://arxiv.org/abs/2006.04558). Currently just embedding, a tiny
+Transformer encoder, and a naive length-matched linear mel projection. It
+exists only to make `experiment=debug` and scripts/synthesize.py|evaluate.py
+runnable end-to-end out of the box, as an integration smoke test.
 
-This is NOT a real FastSpeech2: there is no variance adaptor (duration/pitch/
-energy predictors), no length regulator, and no aligner -- just a fixed
-frames-per-phoneme heuristic used at inference to decide how long the output
-should be, and per-sample linear interpolation (not length regulation) to
-stretch the encoder output to that length during training too. Replace this
-class (and `network` in configs/model/fastspeech2.yaml) with a real
-implementation satisfying src.models.base.BaseTTSModel -- see README.md's
+This is not a real FastSpeech2. There is no variance adaptor (duration,
+pitch, and energy predictors), no length regulator, and no aligner, only a
+fixed frames-per-phoneme heuristic used at inference to decide how long the
+output should be, and per-sample linear interpolation (not length regulation)
+to stretch the encoder output to that length during training as well.
+Replace this class (and `network` in configs/model/fastspeech2.yaml) with a
+real implementation satisfying src.models.base.BaseTTSModel. See README.md's
 "The model contract" section, and this README's "Implementing FastSpeech2"
-section for the shape of what's missing.
+section for the shape of what is missing.
 """
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ class FastSpeech2Placeholder(BaseTTSModel):
 
     @staticmethod
     def _length_match(enc: torch.Tensor, src_lens: torch.Tensor, target_lens: torch.Tensor, max_target_len: int) -> torch.Tensor:
-        """Per-sample linear interpolation along time -- a naive placeholder for
+        """Per-sample linear interpolation along time, a naive placeholder for
         real duration prediction / length regulation. (B, T_text, H) -> (B, max_target_len, H)."""
         out = enc.new_zeros(enc.shape[0], max_target_len, enc.shape[-1])
         for i in range(enc.shape[0]):

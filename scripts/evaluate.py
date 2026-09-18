@@ -5,7 +5,7 @@ score against the original LJSpeech ground-truth wavs with the VERSA toolkit
 
 Since scripts/preprocess.py keeps LJSpeech at its NATIVE 22050 Hz, the original
 `data/raw/LJSpeech-1.1/wavs/*.wav` files are already valid, unmodified
-references at the exact rate the model + BigVGAN vocoder produce -- no
+references at the exact rate the model and BigVGAN vocoder produce. No
 separate reference-wav pipeline is needed.
 
 Usage:
@@ -17,8 +17,8 @@ VERSA is invoked as a subprocess (not imported) so `--help` parses even
 without the `evaluate` extra installed, and so this project's own
 torch/torchaudio pins never have to reconcile with VERSA's dependency tree at
 import time. `configs/versa/cpu.yaml` (VERSA's own CPU-only example config:
-mcd_f0, signal_metric, pesq, stoi) is used by default -- no large pretrained
-metric models get downloaded unless you point --versa_config at a heavier one.
+mcd_f0, signal_metric, pesq, stoi) is used by default. No large pretrained
+metric models get downloaded unless --versa_config points at a heavier one.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def _run_versa(pred_dir: str, gt_dir: str, versa_config: str, out_file: str):
     spec = importlib.util.find_spec("versa")
     if spec is None or not spec.submodule_search_locations:
         raise SystemExit(
-            "versa is not installed -- run `uv sync --extra evaluate` first "
+            "versa is not installed. Run `uv sync --extra evaluate` first "
             "(installs from https://github.com/wavlab-speech/versa)."
         )
     versa_dir = list(spec.submodule_search_locations)[0]
@@ -89,7 +89,7 @@ def _run_versa(pred_dir: str, gt_dir: str, versa_config: str, out_file: str):
 
 def _summarize(out_file: str):
     if not os.path.isfile(out_file):
-        print(f"VERSA finished but {out_file} wasn't found -- check its own console output above.")
+        print(f"VERSA finished but {out_file} was not found. Check its own console output above.")
         return
 
     totals: dict[str, list[float]] = {}
@@ -107,7 +107,7 @@ def _summarize(out_file: str):
                     totals.setdefault(key, []).append(value)
 
     if not totals:
-        print(f"Wrote {out_file} but couldn't parse per-utterance metrics from it -- inspect the file directly.")
+        print(f"Wrote {out_file} but could not parse per-utterance metrics from it. Inspect the file directly.")
         return
 
     print("\nMean metrics:")
@@ -149,7 +149,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cli():
     """Entry point for the `tts-evaluate` uv tool (see [project.scripts]
-    in pyproject.toml) -- equivalent to `uv run python scripts/evaluate.py ...`."""
+    in pyproject.toml). Equivalent to `uv run python scripts/evaluate.py ...`."""
     main(build_parser().parse_args())
 
 

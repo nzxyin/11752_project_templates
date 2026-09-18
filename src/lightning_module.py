@@ -1,16 +1,16 @@
 """Generic PyTorch Lightning wrapper around any src.models.base.BaseTTSModel
-subclass: training/validation steps, loss-agnostic scalar logging, AdamW(fused)
-+ Hydra-instantiated-scheduler optimization, and periodic mel-spectrogram image
-logging (TensorBoard and/or W&B, whichever loggers are attached to the
-Trainer). This module never needs to change when swapping in a different
-acoustic model -- see configs/model/example.yaml for how the actual model is
-nested under `network:` and instantiated via Hydra, and src/models/base.py for
-the contract a model must satisfy.
+subclass. It handles training/validation steps, loss-agnostic scalar logging,
+AdamW(fused)-plus-Hydra-instantiated-scheduler optimization, and periodic
+mel-spectrogram image logging (TensorBoard and/or W&B, whichever loggers are
+attached to the Trainer). This module never needs to change when swapping in a
+different acoustic model. See configs/model/example.yaml for how the actual
+model is nested under `network:` and instantiated via Hydra, and
+src/models/base.py for the contract a model must satisfy.
 
-DDP / multi-node: nothing model-specific is needed here -- see
-configs/trainer/ddp.yaml and the README for how that's driven from the Trainer
-side; `sync_dist=True` below makes the logged val losses correct when running
-under multiple ranks.
+DDP / multi-node: nothing model-specific is needed here. See
+configs/trainer/ddp.yaml and the README for how that is driven from the
+Trainer side. `sync_dist=True` below makes the logged val losses correct when
+running under multiple ranks.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _cfg(x):
     # Inverse of _plain(), for building submodules: `network` etc. arrive as
     # DictConfig when constructed fresh from Hydra, but as a plain dict when
     # reconstructed by `load_from_checkpoint` (which replays the plain hparams
-    # saved above) -- normalize to DictConfig either way so `.attr` access works.
+    # saved above). Normalize to DictConfig either way so `.attr` access works.
     return OmegaConf.create(x) if isinstance(x, dict) else x
 
 
@@ -53,11 +53,11 @@ class TTSLightningModule(LightningModule):
 
         network = _cfg(network)
 
-        # stash everything so ckpt.hparams is enough to rebuild the model without
-        # the original hydra config; the datamodule fills in extra_kwargs
-        # (e.g. n_symbols) at runtime -- see TTSDataModule.stats. extra_kwargs
-        # is spread INTO the top-level dict (not nested under an "extra_kwargs"
-        # key) so load_from_checkpoint's `cls(**hparams)` reconstruction passes
+        # Stash everything so ckpt.hparams is enough to rebuild the model without
+        # the original hydra config. The datamodule fills in extra_kwargs
+        # (e.g. n_symbols) at runtime, see TTSDataModule.stats. extra_kwargs
+        # is spread into the top-level dict, not nested under an "extra_kwargs"
+        # key, so load_from_checkpoint's `cls(**hparams)` reconstruction passes
         # e.g. n_symbols=81 back in as a real keyword, not a mis-named container.
         self.save_hyperparameters(
             dict(
@@ -140,14 +140,14 @@ class TTSLightningModule(LightningModule):
         return getattr(self, "loggers", [self.logger])
 
     def configure_optimizers(self):
-        # self.hparams.{optimizer,scheduler} are plain dicts (see __init__) --
-        # wrap back into a DictConfig so hydra.utils.instantiate can resolve `_target_`.
+        # self.hparams.{optimizer,scheduler} are plain dicts (see __init__).
+        # Wrap back into a DictConfig so hydra.utils.instantiate can resolve `_target_`.
         optimizer_cfg = OmegaConf.create(self.hparams.optimizer)
-        # `fused=True` AdamW requires all params to be CUDA tensors; fall back to the
+        # `fused=True` AdamW requires all params to be CUDA tensors. Fall back to the
         # unfused kernel automatically so the same config also works for the CPU debug
         # run (configs/experiment/debug.yaml) instead of erroring.
         if optimizer_cfg.get("fused", False) and not all(p.is_cuda for p in self.parameters()):
-            log.warning("optimizer.fused=true requested but model is not on CUDA -- disabling fused AdamW.")
+            log.warning("optimizer.fused=true requested but model is not on CUDA. Disabling fused AdamW.")
             optimizer_cfg.fused = False
         optimizer = hydra.utils.instantiate(optimizer_cfg, params=self.parameters())
 

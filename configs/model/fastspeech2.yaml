@@ -1,22 +1,22 @@
 # PLACEHOLDER for a FastSpeech2 config (Ren et al., ICLR 2021,
 # https://arxiv.org/abs/2006.04558). src.models.fastspeech2.FastSpeech2Placeholder
-# is currently just embedding + a tiny Transformer encoder + naive
-# length-matched linear mel projection -- exists purely so `experiment=debug`
+# is currently just embedding, a tiny Transformer encoder, and a naive
+# length-matched linear mel projection. It exists purely so `experiment=debug`
 # and scripts/synthesize.py|evaluate.py work end-to-end as a smoke test; it is
-# NOT a real FastSpeech2 (no variance adaptor, no length regulator, no
+# not a real FastSpeech2 (no variance adaptor, no length regulator, no
 # aligner). See this repo's README.md ("Implementing FastSpeech2") for the
-# shape of what's missing.
+# shape of what is missing.
 #
 # Update `network` below (arch hyperparams: encoder/decoder size, variance
-# predictor sizes, alignment config, ...) as you build out the real model --
+# predictor sizes, alignment config, etc.) while building out the real model.
 # src/lightning_module.py (TTSLightningModule) needs no changes.
 _target_: src.lightning_module.TTSLightningModule
 
 network:
   _target_: src.models.fastspeech2.FastSpeech2Placeholder
-  # n_symbols is NOT set here -- it's supplied at runtime from the persisted
+  # n_symbols is not set here. It is supplied at runtime from the persisted
   # text-frontend vocab (src/data/datamodule.py's TTSDataModule.stats), since
-  # it can't be known until scripts/preprocess.py has run.
+  # it cannot be known until scripts/preprocess.py has run.
   n_mel_channels: ${data.n_mel_channels}
   n_speakers: 1
   multi_speaker: ${data.multi_speaker}
@@ -37,7 +37,7 @@ optimizer:
   fused: true    # requires CUDA; TTSLightningModule.configure_optimizers falls back to false on CPU automatically
 
 # 1cycle policy (Smith, "Super-Convergence"): LR ramps 0 -> max_lr over the first
-# pct_start of training, then anneals back down to ~0 by the end -- total_steps
+# pct_start of training, then anneals back down to ~0 by the end. total_steps
 # is tied to trainer.max_steps so overriding one CLI flag keeps both in sync.
 scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
