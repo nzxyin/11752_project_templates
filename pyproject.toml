@@ -2,6 +2,7 @@
 name = "matcha-tts-template"
 version = "0.1.0"
 description = "Hydra + PyTorch Lightning template for a Matcha-TTS implementation (Mehta et al., ICASSP 2024), on the generic TTS front-end (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.1",
