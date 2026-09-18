@@ -243,15 +243,25 @@ uv run tensorboard --logdir logs/tensorboard
 
 ### Optimizer / schedule
 
-`configs/model/example.yaml` ships AdamW with the fused CUDA kernel
+Optimizer and scheduler are ordinary Hydra-instantiated objects
+(`configs/model/example.yaml`'s `optimizer`/`scheduler` blocks) -- any
+`torch.optim` optimizer and `torch.optim.lr_scheduler` scheduler works via
+`_target_`; nothing in `TTSLightningModule` assumes a particular choice.
+Different TTS papers favor different setups (Adam with a Transformer-style
+warmup + inverse-square-root decay, as in the original FastSpeech2/
+Transformer-TTS line of work; plain AdamW with a fixed or linear-warmup
+schedule, common in more recent flow-matching models) -- pick whatever the
+paper you're implementing actually uses, or whatever works for you.
+
+The placeholder ships AdamW with the fused CUDA kernel
 (`model.optimizer.fused=true`) + a
 [OneCycleLR](https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html)
 1cycle policy (`model.scheduler`), whose `total_steps` is tied to
-`trainer.max_steps` so one CLI override keeps both in sync.
-`TTSLightningModule.configure_optimizers` automatically falls back to
-`fused=false` when training on CPU (e.g. `experiment=debug`), so the same config
-works everywhere without editing it. A real model's config can use whatever
-optimizer/scheduler it wants -- this is just what the placeholder ships with.
+`trainer.max_steps` so one CLI override keeps both in sync -- purely as one
+concrete, runnable default, not a recommendation for any particular
+architecture. `TTSLightningModule.configure_optimizers` automatically falls
+back to `fused=false` when training on CPU (e.g. `experiment=debug`), so the
+same config works everywhere without editing it.
 
 > **Resuming**: OneCycleLR's checkpointed state (including `total_steps`)
 > overwrites whatever the new run's config says, so resuming with a *different*
