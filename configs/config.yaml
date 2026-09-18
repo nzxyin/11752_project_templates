@@ -3,7 +3,7 @@
 defaults:
   - paths: default
   - data: ljspeech
-  - model: example
+  - model: f5tts
   - trainer: default
   - callbacks: default
   - logger: tensorboard
@@ -11,7 +11,7 @@ defaults:
   - _self_
 
 # experiment name, used for logging / checkpoint dirs
-name: tts_baseline
+name: f5tts_baseline
 
 seed: 42
 

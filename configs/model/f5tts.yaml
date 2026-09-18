@@ -1,16 +1,19 @@
-# PLACEHOLDER model config -- src.models.example.ExampleTTSModel is embedding +
-# a tiny Transformer encoder + naive length-matched linear mel projection. It
-# exists purely so `experiment=debug` and scripts/synthesize.py|evaluate.py
-# work end-to-end as a smoke test; it is NOT a real TTS system.
+# PLACEHOLDER for an F5-TTS config (Chen et al., 2024,
+# https://arxiv.org/abs/2410.06885). src.models.f5tts.F5TTSPlaceholder is
+# currently just embedding + a tiny Transformer encoder + naive
+# length-matched linear mel projection -- exists purely so `experiment=debug`
+# and scripts/synthesize.py|evaluate.py work end-to-end as a smoke test; it is
+# NOT real F5-TTS (no DiT backbone, no flow matching, no reference-audio
+# conditioning). See this repo's README.md ("Implementing F5-TTS") for the
+# shape of what's missing.
 #
-# To plug in a real model (FastSpeech2 / Matcha-TTS / F5-TTS / ...): write an
-# nn.Module subclassing src.models.base.BaseTTSModel, then add a new
-# configs/model/<name>.yaml like this one with `network._target_` pointing at
-# it -- src/lightning_module.py (TTSLightningModule) needs no changes.
+# Update `network` below (arch hyperparams: DiT depth/width, flow-matching
+# config, ODE solver steps, ...) as you build out the real model --
+# src/lightning_module.py (TTSLightningModule) needs no changes.
 _target_: src.lightning_module.TTSLightningModule
 
 network:
-  _target_: src.models.example.ExampleTTSModel
+  _target_: src.models.f5tts.F5TTSPlaceholder
   # n_symbols is NOT set here -- it's supplied at runtime from the persisted
   # text-frontend vocab (src/data/datamodule.py's TTSDataModule.stats), since
   # it can't be known until scripts/preprocess.py has run.

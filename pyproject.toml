@@ -1,7 +1,7 @@
 [project]
-name = "tts-template"
+name = "f5-tts-template"
 version = "0.1.0"
-description = "Hydra + PyTorch Lightning generic front-end for FastSpeech2 / Matcha-TTS / F5-TTS-style acoustic models (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
+description = "Hydra + PyTorch Lightning template for an F5-TTS implementation (Chen et al., 2024), on the generic TTS front-end (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.1",
@@ -58,6 +58,13 @@ evaluate = [
     # importlib.util.find_spec("versa").
     "versa-speech-audio-toolkit @ git+https://github.com/wavlab-speech/versa.git",
 ]
+
+# Uncomment/adjust once you start implementing the real model, e.g.:
+# f5tts = [
+#     "x-transformers",   # commonly used for DiT/transformer blocks in public F5-TTS reimplementations
+#     "torchdiffeq",      # if you want an off-the-shelf ODE solver for flow-matching sampling
+#     "ema-pytorch",       # EMA weight averaging, commonly used in diffusion/flow training
+# ]
 
 [dependency-groups]
 dev = [
