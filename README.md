@@ -1,24 +1,24 @@
-# TTS Template (Hydra + PyTorch Lightning)
+# FastSpeech2 Template (Hydra + PyTorch Lightning)
 
-A generic **front-end** for non-autoregressive TTS acoustic models -- think
-FastSpeech2, Matcha-TTS, F5-TTS, or your own architecture -- built on
-[Hydra](https://hydra.cc/) + [PyTorch Lightning](https://lightning.ai/). It
+A [generic TTS front-end](../../tree/master) (see that branch's README for the
+full picture), tailored to implementing **FastSpeech2**: Ren, Hu, Tan, Qin,
+Zhao, Zhao & Liu, ["FastSpeech 2: Fast and High-Quality End-to-End Text to
+Speech"](https://arxiv.org/abs/2006.04558) (ICLR 2021). Built on
+[Hydra](https://hydra.cc/) + [PyTorch Lightning](https://lightning.ai/), it
 provides everything *around* the model: LJSpeech preprocessing at its
 **native 22050 Hz**, a training/validation/testing loop, checkpointing +
 TensorBoard/W&B logging, DDP/multi-node, text-to-mel-to-waveform inference
 wired up to the official **BigVGANv2 22kHz** vocoder checkpoint, and
 objective evaluation via the [VERSA](https://github.com/wavlab-speech/versa)
-toolkit -- so you can drop in a real acoustic model and get training, testing,
+toolkit -- so you can focus on the model itself and get training, testing,
 inference, and evaluation for free.
 
-**This template does not implement a real TTS model.** `src/models/example.py`
-is a minimal, deliberately-naive placeholder (no learned duration modeling)
-that exists only so every command below actually runs out of the box, as an
-integration smoke test. A full working **FastSpeech2** implementation built on
-top of an earlier version of this template lives on the [`fastspeech2`
-branch](../../tree/fastspeech2) -- a useful reference for what a real
-implementation looks like, and a fine starting point if FastSpeech2 is
-specifically what you want.
+**This template does not implement FastSpeech2.** `src/models/fastspeech2.py`
+(`FastSpeech2Placeholder`) is a minimal, deliberately-naive stand-in (no
+variance adaptor, no length regulator, no aligner) that exists only so every
+command below actually runs out of the box, as an integration smoke test --
+see [Implementing FastSpeech2](#implementing-fastspeech2) below for the shape
+of what's missing.
 
 ## Project layout
 
@@ -27,7 +27,7 @@ configs/                 Hydra configs (composable via CLI overrides)
   config.yaml             top-level: composes the groups below
   paths/default.yaml       all filesystem paths, referenced via ${paths.xxx}
   data/ljspeech.yaml        DataModule + batching options
-  model/example.yaml        PLACEHOLDER model + optimizer/scheduler config (see "The model contract")
+  model/fastspeech2.yaml    PLACEHOLDER model + optimizer/scheduler config (see "The model contract")
   trainer/{default,ddp}.yaml   pytorch_lightning.Trainer args (single-device / multi-GPU+node)
   callbacks/default.yaml    checkpointing (monitors val/loss), LR monitor, progress bar
   logger/{tensorboard,wandb,both}.yaml
@@ -41,7 +41,7 @@ src/
                              AdamW(fused)+Hydra-instantiated scheduler, checkpoint hparams
   models/
     base.py                  BaseTTSModel: the contract a real model must satisfy
-    example.py                PLACEHOLDER model (embedding + tiny Transformer encoder +
+    fastspeech2.py             PLACEHOLDER model (embedding + tiny Transformer encoder +
                                naive length-matched linear mel projection) -- replace this
   data/
     frontends/                pluggable text -> token frontends (see below)
@@ -90,17 +90,17 @@ class BaseTTSModel(nn.Module, abc.ABC):
         """Optional extra validation figures beyond the default mel pair."""
 ```
 
-**To plug in a real model**: write an `nn.Module` subclassing `BaseTTSModel`,
-then add a `configs/model/<name>.yaml` modeled on `configs/model/example.yaml`
-with `network._target_` pointing at it, e.g.:
+**To plug in a real model**: write an `nn.Module` subclassing `BaseTTSModel`
+(e.g. edit `src/models/fastspeech2.py` in place), and point
+`configs/model/fastspeech2.yaml`'s `network._target_` at it, e.g.:
 
 ```yaml
 _target_: src.lightning_module.TTSLightningModule
 network:
-  _target_: src.models.matcha.MatchaTTS
-  hidden: 192
+  _target_: src.models.fastspeech2.FastSpeech2
+  encoder_hidden: 256
   # ... your architecture's hyperparams
-optimizer: { _target_: torch.optim.AdamW, lr: 1.0e-4, ... }
+optimizer: { _target_: torch.optim.AdamW, lr: 1.0e-3, ... }
 scheduler: { _target_: torch.optim.lr_scheduler.OneCycleLR, ... }
 ```
 
@@ -244,7 +244,7 @@ uv run tensorboard --logdir logs/tensorboard
 
 ### Optimizer / schedule
 
-`configs/model/example.yaml` ships AdamW with the fused CUDA kernel
+`configs/model/fastspeech2.yaml` ships AdamW with the fused CUDA kernel
 (`model.optimizer.fused=true`) + a
 [OneCycleLR](https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html)
 1cycle policy (`model.scheduler`), whose `total_steps` is tied to
@@ -341,11 +341,47 @@ models downloaded). Pass `--versa_config` to point at a heavier VERSA config
 thorough evaluation. `--limit N` caps the number of utterances for a quick
 smoke test.
 
+## Implementing FastSpeech2
+
+`src/models/fastspeech2.py`'s `FastSpeech2Placeholder` is where the real
+model goes. From the paper, FastSpeech2 is:
+
+```
+phonemes -> [Transformer encoder (FFT blocks)]
+         -> [Variance Adaptor: duration predictor -> length regulator,
+                                pitch predictor, energy predictor]
+         -> [Transformer decoder (FFT blocks)]
+         -> linear projection -> mel-spectrogram (-> optional PostNet)
+```
+
+A few things this means for fitting it into `BaseTTSModel`
+(`forward(batch) -> dict`, `synthesize(text_ids, src_lens, **kwargs) -> dict`):
+
+- **Durations need a source.** Either an external forced aligner (e.g. the
+  [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/))
+  run as a one-time offline step, or a *learned* aligner trained jointly with
+  the model (several published approaches exist for this -- worth a
+  literature search if you want to avoid the external-tool step). Either way,
+  ground-truth durations are only available in `forward()` (teacher forcing);
+  `synthesize()` has no ground-truth mel, so it must always fall back to the
+  duration *predictor's* own output.
+- **Pitch/energy targets**: this template's `scripts/preprocess.py` only
+  extracts mel-spectrograms + text -- extracting per-frame or per-phoneme
+  pitch/energy (and, if you go the external-aligner route, durations) is
+  yours to add, either in a copy of `scripts/preprocess.py` or a separate
+  preprocessing pass, and `src/data/dataset.py`/`datamodule.py` will need
+  extending to load and batch them alongside the text/mel pairs already there.
+- **`forward()`'s `"loss"`** should be your combined objective (mel
+  reconstruction + duration + pitch + energy losses, whatever weighting you choose).
+- The vendored `src/vocoders/bigvgan_vocoder.py` and `src/vocoders/mel.py`
+  need no changes -- FastSpeech2's job is only to predict a mel matching that
+  convention (`configs/data/ljspeech.yaml`'s `n_mel_channels: 80`).
+
 ## Notes / where to extend
 
 - **A different model**: see [The model contract](#the-model-contract) above --
   that's the whole point of this template.
-- **Multi-speaker**: set `data.multi_speaker=true`; `ExampleTTSModel` already
+- **Multi-speaker**: set `data.multi_speaker=true`; `FastSpeech2Placeholder` already
   demonstrates the pattern (a speaker embedding added to the encoder input) --
   a real implementation should do the same, plus a per-speaker `speakers.json`
   during preprocessing (currently LJSpeech-only, single speaker).

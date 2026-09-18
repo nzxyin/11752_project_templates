@@ -1,15 +1,18 @@
-"""PLACEHOLDER acoustic model -- embedding + a tiny Transformer encoder + a
-naive length-matched linear mel projection. Exists ONLY to make
-`experiment=debug` and scripts/synthesize.py|evaluate.py runnable end-to-end
-out of the box as an integration smoke test.
+"""PLACEHOLDER for a FastSpeech2 implementation (Ren et al., ICLR 2021,
+https://arxiv.org/abs/2006.04558). Currently just embedding + a tiny
+Transformer encoder + naive length-matched linear mel projection -- exists
+ONLY to make `experiment=debug` and scripts/synthesize.py|evaluate.py runnable
+end-to-end out of the box as an integration smoke test.
 
-This is NOT a real TTS system: there is no learned duration/alignment model,
-just a fixed frames-per-phoneme heuristic used at inference to decide how long
-the output should be, and per-sample linear interpolation (not length
-regulation) to stretch the encoder output to that length during training too.
-Replace `network` in configs/model/example.yaml with a real FastSpeech2 /
-Matcha-TTS / F5-TTS implementation satisfying src.models.base.BaseTTSModel --
-see README.md's "The model contract" section.
+This is NOT a real FastSpeech2: there is no variance adaptor (duration/pitch/
+energy predictors), no length regulator, and no aligner -- just a fixed
+frames-per-phoneme heuristic used at inference to decide how long the output
+should be, and per-sample linear interpolation (not length regulation) to
+stretch the encoder output to that length during training too. Replace this
+class (and `network` in configs/model/fastspeech2.yaml) with a real
+implementation satisfying src.models.base.BaseTTSModel -- see README.md's
+"The model contract" section, and this README's "Implementing FastSpeech2"
+section for the shape of what's missing.
 """
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ from src.models.base import BaseTTSModel
 from src.utils.tools import get_mask_from_lengths
 
 
-class ExampleTTSModel(BaseTTSModel):
+class FastSpeech2Placeholder(BaseTTSModel):
     def __init__(
         self,
         n_symbols: int,

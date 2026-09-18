@@ -1,7 +1,7 @@
 [project]
-name = "tts-template"
+name = "fastspeech2-template"
 version = "0.1.0"
-description = "Hydra + PyTorch Lightning generic front-end for FastSpeech2 / Matcha-TTS / F5-TTS-style acoustic models (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
+description = "Hydra + PyTorch Lightning template for a FastSpeech2 implementation (Ren et al., ICLR 2021), on the generic TTS front-end (LJSpeech @ 22050 Hz, BigVGANv2 vocoding)"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.1",
@@ -58,6 +58,14 @@ evaluate = [
     # importlib.util.find_spec("versa").
     "versa-speech-audio-toolkit @ git+https://github.com/wavlab-speech/versa.git",
 ]
+
+# Uncomment/adjust once you start implementing the real model, e.g.:
+# fastspeech2 = [
+#     "pyworld",    # F0/pitch extraction for the variance adaptor's pitch predictor
+#     "numba",      # if using Monotonic Alignment Search for a learned aligner
+#     "scipy",      # e.g. a beta-binomial attention prior, if you go that route
+#     "tgt",        # if instead using Montreal Forced Aligner TextGrids for durations
+# ]
 
 [dependency-groups]
 dev = [
