@@ -244,15 +244,25 @@ uv run tensorboard --logdir logs/tensorboard
 
 ### Optimizer / schedule
 
-`configs/model/fastspeech2.yaml` ships AdamW with the fused CUDA kernel
+Optimizer and scheduler are ordinary Hydra-instantiated objects
+(`configs/model/fastspeech2.yaml`'s `optimizer`/`scheduler` blocks) -- any
+`torch.optim` optimizer and `torch.optim.lr_scheduler` scheduler works via
+`_target_`; nothing in `TTSLightningModule` assumes a particular choice.
+Different TTS papers favor different setups (Adam with a Transformer-style
+warmup + inverse-square-root decay, as in the original FastSpeech2/
+Transformer-TTS line of work; plain AdamW with a fixed or linear-warmup
+schedule, common in more recent flow-matching models) -- pick whatever the
+paper you're implementing actually uses, or whatever works for you.
+
+The placeholder ships AdamW with the fused CUDA kernel
 (`model.optimizer.fused=true`) + a
 [OneCycleLR](https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html)
 1cycle policy (`model.scheduler`), whose `total_steps` is tied to
-`trainer.max_steps` so one CLI override keeps both in sync.
-`TTSLightningModule.configure_optimizers` automatically falls back to
-`fused=false` when training on CPU (e.g. `experiment=debug`), so the same config
-works everywhere without editing it. A real model's config can use whatever
-optimizer/scheduler it wants -- this is just what the placeholder ships with.
+`trainer.max_steps` so one CLI override keeps both in sync -- purely as one
+concrete, runnable default, not a recommendation for any particular
+architecture. `TTSLightningModule.configure_optimizers` automatically falls
+back to `fused=false` when training on CPU (e.g. `experiment=debug`), so the
+same config works everywhere without editing it.
 
 > **Resuming**: OneCycleLR's checkpointed state (including `total_steps`)
 > overwrites whatever the new run's config says, so resuming with a *different*
@@ -365,6 +375,16 @@ A few things this means for fitting it into `BaseTTSModel`
   ground-truth durations are only available in `forward()` (teacher forcing);
   `synthesize()` has no ground-truth mel, so it must always fall back to the
   duration *predictor's* own output.
+  > If you go the MFA route: MFA's pretrained acoustic models expect their
+  > own phoneme dictionary/inventory, which will generally NOT match this
+  > template's `--frontend phonemizer` (espeak-derived IPA, built dynamically
+  > per corpus -- see [Text frontends](#text-frontends)) -- mixing the two
+  > means MFA's alignment won't correspond to your model's token ids. Either
+  > keep the default `g2p_en` (ARPAbet) frontend when using MFA (MFA's
+  > standard English dictionaries are ARPAbet-based, so this is the
+  > compatible pairing), or train/adapt an MFA acoustic model + dictionary on
+  > your chosen phoneme inventory if you specifically want `phonemizer` + MFA
+  > together.
 - **Pitch/energy targets**: this template's `scripts/preprocess.py` only
   extracts mel-spectrograms + text -- extracting per-frame or per-phoneme
   pitch/energy (and, if you go the external-aligner route, durations) is
