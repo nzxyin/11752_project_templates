@@ -26,7 +26,7 @@ class BucketBatchSampler(Sampler):
         self.window = max(batch_size * batch_group_size, batch_size)
         self.drop_last = drop_last
         self.shuffle = shuffle
-        self.mel_lens = None  # populated lazily -- see __iter__
+        self.mel_lens = None  # populated lazily, see __iter__
 
     def _lengths(self) -> np.ndarray:
         if self.mel_lens is None:

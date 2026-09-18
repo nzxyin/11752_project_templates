@@ -12,7 +12,7 @@ DEFAULT_CHECKPOINT = "nvidia/bigvgan_v2_22khz_80band_256x"
 
 def load_vocoder(checkpoint: str | None = None, device: str = "cpu"):
     """checkpoint: a Hugging Face Hub repo id, or a local directory containing
-    config.json + bigvgan_generator.pt -- defaults to BigVGAN's official
+    config.json + bigvgan_generator.pt. Defaults to BigVGAN's official
     22050 Hz/80-mel checkpoint. Returns a callable
     `vocoder(mel: (B, num_mels, T)) -> (B, T_wav)`."""
     from src.vocoders.bigvgan_vocoder import BigVGANVocoder

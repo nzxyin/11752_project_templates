@@ -1,17 +1,17 @@
 """PLACEHOLDER for an F5-TTS implementation (Chen, Niu, Ma, Deng et al., 2024,
-https://arxiv.org/abs/2410.06885). Currently just embedding + a tiny
-Transformer encoder + naive length-matched linear mel projection -- exists
-ONLY to make `experiment=debug` and scripts/synthesize.py|evaluate.py
-runnable end-to-end out of the box as an integration smoke test.
+https://arxiv.org/abs/2410.06885). Currently just embedding, a tiny
+Transformer encoder, and a naive length-matched linear mel projection. It
+exists only to make `experiment=debug` and scripts/synthesize.py|evaluate.py
+runnable end-to-end out of the box, as an integration smoke test.
 
-This is NOT real F5-TTS: there is no DiT backbone, no flow matching, and no
-reference-audio conditioning -- just a fixed frames-per-phoneme heuristic used
+This is not real F5-TTS. There is no DiT backbone, no flow matching, and no
+reference-audio conditioning, only a fixed frames-per-phoneme heuristic used
 at inference to decide how long the output should be, and per-sample linear
 interpolation (not real length handling) to stretch the encoder output to
-that length during training too. Replace this class (and `network` in
+that length during training as well. Replace this class (and `network` in
 configs/model/f5tts.yaml) with a real implementation satisfying
-src.models.base.BaseTTSModel -- see README.md's "The model contract" section,
-and this README's "Implementing F5-TTS" section for the shape of what's
+src.models.base.BaseTTSModel. See README.md's "The model contract" section,
+and this README's "Implementing F5-TTS" section for the shape of what is
 missing. In particular, a real implementation should set
 `requires_reference_audio = True` (class attribute, see BaseTTSModel) once it
 actually uses reference-audio conditioning.
@@ -61,7 +61,7 @@ class F5TTSPlaceholder(BaseTTSModel):
 
     @staticmethod
     def _length_match(enc: torch.Tensor, src_lens: torch.Tensor, target_lens: torch.Tensor, max_target_len: int) -> torch.Tensor:
-        """Per-sample linear interpolation along time -- a naive placeholder for
+        """Per-sample linear interpolation along time, a naive placeholder for
         real duration prediction / length regulation. (B, T_text, H) -> (B, max_target_len, H)."""
         out = enc.new_zeros(enc.shape[0], max_target_len, enc.shape[-1])
         for i in range(enc.shape[0]):

@@ -1,5 +1,5 @@
 # Selected via `logger=tensorboard` (default). Each entry under this key is
-# instantiated and passed to `Trainer(logger=[...])` -- see configs/logger/both.yaml
+# instantiated and passed to `Trainer(logger=[...])`. See configs/logger/both.yaml
 # for running TensorBoard and W&B at the same time.
 tensorboard:
   _target_: pytorch_lightning.loggers.TensorBoardLogger

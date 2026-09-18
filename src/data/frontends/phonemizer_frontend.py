@@ -1,14 +1,14 @@
-"""IPA phoneme frontend via `phonemizer` + the espeak-ng backend -- the
-convention many non-English-only / Matcha-TTS-style implementations expect,
+"""IPA phoneme frontend via `phonemizer` and the espeak-ng backend, the
+convention many non-English-only or Matcha-TTS-style implementations expect,
 as an alternative to the default ARPAbet `g2p_en` frontend.
 
-Requires the `phonemizer` extra (`uv sync --extra phonemizer`) AND the espeak-ng
-system binary (not pip-installable) -- see README.md's Setup section for
-per-OS install instructions.
+Requires the `phonemizer` extra (`uv sync --extra phonemizer`) and the
+espeak-ng system binary (not pip-installable). See README.md's Setup section
+for per-OS install instructions.
 
 Unlike ARPAbet's fixed 39-phoneme set, espeak's IPA output varies by language
-and isn't enumerated here -- so this frontend tokenizes at the CHARACTER level
-and builds its vocab from the training corpus during preprocessing
+and is not enumerated here, so this frontend tokenizes at the character level
+and builds its vocabulary from the training corpus during preprocessing
 (`PhonemizerFrontend.build_vocab`), persisted to `symbols.json`.
 """
 from __future__ import annotations
@@ -23,8 +23,8 @@ class PhonemizerFrontend(TextFrontend):
 
     def __init__(self, symbols: list[str] | None, language: str = "en-us"):
         # symbols is None during scripts/preprocess.py's first pass, before the
-        # corpus has been scanned to build the vocab (see build_vocab below) --
-        # encode_for_storage doesn't need it, only stored_string_to_sequence does.
+        # corpus has been scanned to build the vocab (see build_vocab below).
+        # encode_for_storage doesn't need it; only stored_string_to_sequence does.
         self.symbols = symbols or []
         self.symbol_to_id = {s: i for i, s in enumerate(self.symbols)}
         self.language = language
@@ -44,8 +44,8 @@ class PhonemizerFrontend(TextFrontend):
         self._ensure_backend()
         # phonemize() takes/returns lists; a single utterance in, single string out.
         (ipa,) = self._backend.phonemize([raw_text], separator=self._separator, strip=True)
-        # Defensive: filelist lines are "basename|speaker|stored|raw_text" --
-        # guard against a stray "|" or newline regardless of separator config.
+        # Defensive: filelist lines are "basename|speaker|stored|raw_text".
+        # Guard against a stray "|" or newline regardless of separator config.
         return ipa.replace("|", " ").replace("\n", " ")
 
     def stored_string_to_sequence(self, stored: str) -> list[int]:
