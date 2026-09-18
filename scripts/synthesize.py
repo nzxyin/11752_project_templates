@@ -12,12 +12,12 @@ Usage:
 
 The text frontend and normalization backend are auto-detected from
 `preprocess_config.json`/`symbols.json` next to the checkpoint's training data
-(or override with --preprocessed_dir) -- these must match training or token
+(or override with --preprocessed_dir). These must match training, or token
 ids will be nonsensical. With no vocoder resolvable, only the mel-spectrogram
 is saved (as .npy, plus a .png if --plot).
 
 --model_kwarg key=value (repeatable, JSON-decoded value) forwards arbitrary
-model-specific inference args into BaseTTSModel.synthesize(**kwargs) -- e.g. a
+model-specific inference args into BaseTTSModel.synthesize(**kwargs), e.g. a
 Matcha-TTS ODE step count or an F5-TTS cfg_scale. If the loaded model sets
 requires_reference_audio=True (F5-TTS-style voice cloning), --ref_audio and
 --ref_text are required and forwarded as ref_mel/ref_text_ids.
@@ -71,7 +71,7 @@ def main(args):
     if preprocessed_dir is None:
         raise SystemExit(
             "Could not find preprocess_config.json/symbols.json to determine the text "
-            "frontend this checkpoint was trained with -- pass --preprocessed_dir explicitly."
+            "frontend this checkpoint was trained with. Pass --preprocessed_dir explicitly."
         )
     frontend = load_frontend_for_preprocessed_dir(preprocessed_dir)
     with open(os.path.join(preprocessed_dir, "preprocess_config.json")) as f:
@@ -117,7 +117,7 @@ def main(args):
     else:
         mel_np = mel.cpu().numpy()
         np.save(args.out, mel_np)
-        print(f"Saved mel-spectrogram {mel_np.shape} to {args.out} (no vocoder run -- .wav --out to vocode)")
+        print(f"Saved mel-spectrogram {mel_np.shape} to {args.out} (no vocoder run; use a .wav --out to vocode)")
 
     if args.plot:
         fig = plot_mel([mel.cpu().numpy().T], ["Synthesized Mel"])
@@ -133,9 +133,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", default="synthesized.wav", help=".wav for audio, .npy to save the mel array instead")
     parser.add_argument("--preprocessed_dir", default=None, help="default: auto-detected next to the checkpoint's training data")
     parser.add_argument("--vocoder_checkpoint", default=None, help="HF Hub repo id or local BigVGAN directory (default: nvidia/bigvgan_v2_22khz_80band_256x)")
-    parser.add_argument("--model_kwarg", action="append", metavar="key=value", help="repeatable -- forwarded into BaseTTSModel.synthesize(**kwargs)")
-    parser.add_argument("--ref_audio", default=None, help="reference audio path -- required if the model sets requires_reference_audio=True")
-    parser.add_argument("--ref_text", default=None, help="reference audio's transcript -- required alongside --ref_audio")
+    parser.add_argument("--model_kwarg", action="append", metavar="key=value", help="repeatable, forwarded into BaseTTSModel.synthesize(**kwargs)")
+    parser.add_argument("--ref_audio", default=None, help="reference audio path, required if the model sets requires_reference_audio=True")
+    parser.add_argument("--ref_text", default=None, help="reference audio's transcript, required alongside --ref_audio")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--plot", action="store_true")
     return parser
@@ -143,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cli():
     """Entry point for the `tts-synthesize` uv tool (see [project.scripts]
-    in pyproject.toml) -- equivalent to `uv run python scripts/synthesize.py ...`."""
+    in pyproject.toml). Equivalent to `uv run python scripts/synthesize.py ...`."""
     main(build_parser().parse_args())
 
 

@@ -1,10 +1,11 @@
 """ARPAbet phoneme frontend for English, via `g2p_en` (CMUdict-backed G2P).
-No forced alignment or external tool needed. This is the default frontend --
-zero system dependencies beyond the `preprocess`/`synthesize` extras.
+No forced alignment or external tool is needed. This is the default frontend,
+with zero system dependencies beyond the `preprocess`/`synthesize` extras.
 
 Filelist entries store the phoneme sequence in curly braces, space-separated,
-e.g. "{HH AH0 L OW1} {W ER1 L D}" for "Hello world" -- the ming024/FastSpeech2
-convention, which lets punctuation appear un-braced between/after phoneme groups.
+e.g. "{HH AH0 L OW1} {W ER1 L D}" for "Hello world". This is the
+ming024/FastSpeech2 convention, which lets punctuation appear un-braced
+between or after phoneme groups.
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ class G2pEnFrontend(TextFrontend):
 
     def __init__(self, symbols: list[str] | None = None):
         # symbols is accepted (and ignored beyond a sanity check) for interface
-        # uniformity with PhonemizerFrontend -- this vocab is fixed, not data-driven.
+        # uniformity with PhonemizerFrontend. This vocab is fixed, not data-driven.
         self.symbols = symbols if symbols is not None else list(SYMBOLS)
         self.symbol_to_id = {s: i for i, s in enumerate(self.symbols)}
 
@@ -69,7 +70,7 @@ def _symbols_to_sequence(symbols, symbol_to_id: dict[str, int]) -> list[int]:
 
 def g2p_phone_string(text: str) -> str:
     """raw text -> "{PH ON EME} {W ER1 D} ..." (this module's curly-brace-per-word
-    convention, see module docstring), using g2p_en -- no forced alignment
+    convention, see module docstring), using g2p_en. No forced alignment is
     needed. Shared by scripts/preprocess.py and scripts/synthesize.py so
     training and inference phonemize identically."""
     global _G2P
@@ -88,7 +89,7 @@ def g2p_phone_string(text: str) -> str:
                 current = []
         elif p.isalnum():  # ARPAbet phoneme, e.g. "AH0", "K"
             current.append(p)
-        else:  # punctuation -- passed through bare, outside any {..} group
+        else:  # punctuation, passed through bare, outside any {..} group
             if current:
                 groups.append("{" + " ".join(current) + "}")
                 current = []
@@ -100,8 +101,8 @@ def g2p_phone_string(text: str) -> str:
 
 def _ensure_nltk_data():
     """g2p_en's own startup check only auto-downloads the (now-renamed) old
-    'averaged_perceptron_tagger' resource; recent nltk actually looks up
-    'averaged_perceptron_tagger_eng' at run time, which g2p_en never fetches --
+    'averaged_perceptron_tagger' resource. Recent nltk actually looks up
+    'averaged_perceptron_tagger_eng' at run time, which g2p_en never fetches,
     so a fresh environment fails on first use with a LookupError deep inside
     nltk.pos_tag. Fetch everything g2p_en needs up front instead."""
     import nltk

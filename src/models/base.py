@@ -1,11 +1,11 @@
 """The plug-in contract a concrete acoustic model (FastSpeech2, Matcha-TTS,
-F5-TTS, ...) must satisfy to work with `src.lightning_module.TTSLightningModule`,
+F5-TTS, etc.) must satisfy to work with `src.lightning_module.TTSLightningModule`,
 `src.data.dataset.TTSDataset`/`TTSDataModule`, and `scripts/synthesize.py` /
-`scripts/evaluate.py`. Deliberately silent on duration modeling, decoder
-architecture (regression / diffusion / flow-matching), and number of internal
-stages -- all of that is the subclass's business. See `src/models/example.py`
-for a minimal concrete implementation and README.md's "The model contract"
-section for a walkthrough of adding a new model.
+`scripts/evaluate.py`. It is deliberately silent on duration modeling, decoder
+architecture (regression, diffusion, or flow-matching), and the number of
+internal stages, all of which are the subclass's business. See
+`src/models/example.py` for a minimal concrete implementation, and README.md's
+"The model contract" section for a walkthrough of adding a new model.
 """
 from __future__ import annotations
 
@@ -20,32 +20,32 @@ class BaseTTSModel(nn.Module, abc.ABC):
     """Set True on a subclass whose `synthesize` needs an audio prompt (e.g.
     F5-TTS-style zero-shot voice cloning). `scripts/synthesize.py` then requires
     `--ref_audio`/`--ref_text` and forwards them as `ref_mel`/`ref_text_ids`
-    kwargs; otherwise those flags are unused."""
+    kwargs. Otherwise those flags are unused."""
 
     @abc.abstractmethod
     def forward(self, batch: dict) -> dict:
         """Teacher-forced training/validation step.
 
         `batch` is whatever `src.data.dataset.collate_fn` produces:
-            texts: (B, T_text) LongTensor -- token ids from the active text frontend
+            texts: (B, T_text) LongTensor, token ids from the active text frontend
             src_lens: (B,) LongTensor
             max_src_len: int
-            mels: (B, T_mel, n_mel) FloatTensor -- ground truth
+            mels: (B, T_mel, n_mel) FloatTensor, ground truth
             mel_lens: (B,) LongTensor
             max_mel_len: int
-            speakers: (B,) LongTensor -- speaker id (0 for single-speaker data)
+            speakers: (B,) LongTensor, speaker id (0 for single-speaker data)
             ids, raw_texts: python lists (not tensors)
 
         Must return a dict containing:
-            "loss": 0-d tensor -- backpropagated directly by
+            "loss": 0-d tensor, backpropagated directly by
                 TTSLightningModule.training_step/validation_step.
-        May include any other scalar entry (0-d tensor, python int/float) --
+        May include any other scalar entry (0-d tensor, python int/float),
         auto-logged as f"{split}/{key}". By convention, also include:
-            "mel_pred": (B, T_mel, n_mel) FloatTensor -- enables the default
+            "mel_pred": (B, T_mel, n_mel) FloatTensor. Enables the default
                 ground-truth-vs-predicted mel image logged every validation
-                epoch (TTSLightningModule._log_mel_example). Optional: a
-                diffusion/flow model for which a denoised sample isn't a free
-                byproduct of the training step may omit this and rely on
+                epoch (TTSLightningModule._log_mel_example). This is optional;
+                a diffusion/flow model for which a denoised sample is not a
+                free byproduct of the training step may omit it and rely on
                 `scripts/evaluate.py` for real quality inspection instead.
         """
 
@@ -57,10 +57,10 @@ class BaseTTSModel(nn.Module, abc.ABC):
         max_src_len: int | None = None,
         **kwargs,
     ) -> dict:
-        """Inference: text -> mel, no ground-truth mel available.
+        """Inference: text to mel, with no ground-truth mel available.
 
         kwargs are open-ended and model-specific (e.g. Matcha-TTS's ODE step
-        count/temperature, F5-TTS's `ref_mel`/`ref_text_ids`/`cfg_scale`) --
+        count/temperature, F5-TTS's `ref_mel`/`ref_text_ids`/`cfg_scale`).
         `scripts/synthesize.py --model_kwarg key=value` forwards arbitrary
         entries here.
 

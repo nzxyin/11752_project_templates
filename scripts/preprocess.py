@@ -1,22 +1,22 @@
-"""Preprocess LJSpeech (kept at its NATIVE 22050 Hz -- no resampling) into the
-features a generic acoustic model trains on: mel-spectrograms (matching the
-BigVGANv2 22kHz vocoder's convention) and phoneme/token sequences from a
-pluggable text frontend -- plus the train/val filelists this template's
+"""Preprocess LJSpeech (kept at its NATIVE 22050 Hz, with no resampling) into
+the features a generic acoustic model trains on: mel-spectrograms (matching
+the BigVGANv2 22kHz vocoder's convention) and phoneme/token sequences from a
+pluggable text frontend, plus the train/val filelists this template's
 src/data/dataset.py consumes.
 
 Text frontend
 -------------
 `--frontend {g2p_en,phonemizer}` (default g2p_en) picks how raw text becomes
-token ids (src/data/frontends/) -- g2p_en needs no system dependencies beyond
-the `preprocess` extra; phonemizer needs the `phonemizer` extra AND the
+token ids (src/data/frontends/). g2p_en needs no system dependencies beyond
+the `preprocess` extra; phonemizer needs the `phonemizer` extra and the
 espeak-ng system binary (see README.md's Setup section). `--language` only
 applies to the phonemizer frontend (default "en-us").
 
 `--normalize {none,nemo}` (default none) optionally runs a text-normalization
-pass before phonemization -- NOT needed for LJSpeech, whose metadata.csv
-transcripts are already normalized; this is an extension point for other,
-messier datasets. The "nemo" backend needs the `normalize` extra AND is
-Linux/WSL/conda-forge only (its `pynini` dependency has no Windows wheels).
+pass before phonemization. This is not needed for LJSpeech, whose metadata.csv
+transcripts are already normalized; it is an extension point for other,
+messier datasets. The "nemo" backend needs the `normalize` extra and is
+Linux/WSL/conda-forge only, since its `pynini` dependency has no Windows wheels.
 
 Writes, under `preprocessed_dir` (configs/paths/default.yaml -> paths.preprocessed_dir):
     mel/{speaker}-mel-{basename}.npy
@@ -43,13 +43,13 @@ from src.data.frontends.phonemizer_frontend import PhonemizerFrontend
 from src.data.normalization import normalize_text
 from src.vocoders.mel import bigvgan_mel_spectrogram
 
-SAMPLING_RATE = 22050   # LJSpeech's native rate -- no resampling needed
+SAMPLING_RATE = 22050   # LJSpeech's native rate, no resampling needed
 N_FFT = 1024
 HOP_LENGTH = 256
 WIN_LENGTH = 1024
 N_MEL_CHANNELS = 80     # matches nvidia/bigvgan_v2_22khz_80band_256x
 MEL_FMIN = 0
-MEL_FMAX = None         # Nyquist -- matches that checkpoint's config (fmax=null)
+MEL_FMAX = None         # Nyquist, matches that checkpoint's config (fmax=null)
 SILENCE_TRIM_DB = 30    # librosa.effects.trim threshold for leading/trailing silence
 
 
@@ -77,7 +77,7 @@ def process_utterance(basename: str, speaker: str, raw_text: str, ljspeech_dir: 
 
     np.save(os.path.join(out_dir, "mel", f"{speaker}-mel-{basename}.npy"), mel)
 
-    # (sum, sum-of-squares, count) rather than the mel array itself -- keeps
+    # (sum, sum-of-squares, count) rather than the mel array itself. This keeps
     # memory flat across a full-corpus run instead of holding every utterance's
     # mel in RAM simultaneously just to compute stats.json at the end.
     mel_stats = (float(mel.sum()), float((mel.astype(np.float64) ** 2).sum()), mel.size)
@@ -112,7 +112,7 @@ def main(args):
         mel_count += n
 
     if args.frontend == "phonemizer":
-        # espeak's IPA output isn't a fixed enumerable set -- build the vocab
+        # espeak's IPA output is not a fixed enumerable set. Build the vocab
         # from what was actually observed in this corpus, then re-encode.
         frontend.symbols = PhonemizerFrontend.build_vocab([r[1] for r in results])
         frontend.symbol_to_id = {s: i for i, s in enumerate(frontend.symbols)}
@@ -165,7 +165,7 @@ def main(args):
         f.write("\n".join(val_lines) + "\n")
 
     print(f"Done. {len(train_lines)} train / {len(val_lines)} val utterances written to {args.out_dir}")
-    print(f"Frontend: {args.frontend} ({len(frontend.symbols)} symbols) -- see {args.out_dir}/symbols.json")
+    print(f"Frontend: {args.frontend} ({len(frontend.symbols)} symbols), see {args.out_dir}/symbols.json")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -182,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cli():
     """Entry point for the `tts-preprocess` uv tool (see [project.scripts]
-    in pyproject.toml) -- equivalent to `uv run python scripts/preprocess.py ...`."""
+    in pyproject.toml). Equivalent to `uv run python scripts/preprocess.py ...`."""
     main(build_parser().parse_args())
 
 

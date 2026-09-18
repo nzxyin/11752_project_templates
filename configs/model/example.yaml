@@ -1,19 +1,19 @@
-# PLACEHOLDER model config -- src.models.example.ExampleTTSModel is embedding +
-# a tiny Transformer encoder + naive length-matched linear mel projection. It
-# exists purely so `experiment=debug` and scripts/synthesize.py|evaluate.py
-# work end-to-end as a smoke test; it is NOT a real TTS system.
+# PLACEHOLDER model config. src.models.example.ExampleTTSModel is embedding,
+# a tiny Transformer encoder, and a naive length-matched linear mel projection.
+# It exists purely so `experiment=debug` and scripts/synthesize.py|evaluate.py
+# work end-to-end as a smoke test; it is not a real TTS system.
 #
-# To plug in a real model (FastSpeech2 / Matcha-TTS / F5-TTS / ...): write an
+# To plug in a real model (FastSpeech2, Matcha-TTS, F5-TTS, etc.), write an
 # nn.Module subclassing src.models.base.BaseTTSModel, then add a new
 # configs/model/<name>.yaml like this one with `network._target_` pointing at
-# it -- src/lightning_module.py (TTSLightningModule) needs no changes.
+# it. src/lightning_module.py (TTSLightningModule) needs no changes.
 _target_: src.lightning_module.TTSLightningModule
 
 network:
   _target_: src.models.example.ExampleTTSModel
-  # n_symbols is NOT set here -- it's supplied at runtime from the persisted
+  # n_symbols is not set here. It is supplied at runtime from the persisted
   # text-frontend vocab (src/data/datamodule.py's TTSDataModule.stats), since
-  # it can't be known until scripts/preprocess.py has run.
+  # it cannot be known until scripts/preprocess.py has run.
   n_mel_channels: ${data.n_mel_channels}
   n_speakers: 1
   multi_speaker: ${data.multi_speaker}
@@ -34,7 +34,7 @@ optimizer:
   fused: true    # requires CUDA; TTSLightningModule.configure_optimizers falls back to false on CPU automatically
 
 # 1cycle policy (Smith, "Super-Convergence"): LR ramps 0 -> max_lr over the first
-# pct_start of training, then anneals back down to ~0 by the end -- total_steps
+# pct_start of training, then anneals back down to ~0 by the end. total_steps
 # is tied to trainer.max_steps so overriding one CLI flag keeps both in sync.
 scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR

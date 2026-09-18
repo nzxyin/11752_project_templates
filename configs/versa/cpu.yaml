@@ -1,8 +1,8 @@
-# VERSA's own CPU-only example metric config (egs/speech_cpu.yaml upstream) --
-# no large pretrained metric models needed, safe to run on a laptop. Used by
-# default by scripts/evaluate.py (--versa_config); point at a heavier VERSA
-# config (e.g. its egs/speech.yaml, which adds UTMOS/DNSMOS/speaker-similarity/etc.)
-# for a more thorough but much slower/heavier evaluation.
+# VERSA's own CPU-only example metric config (egs/speech_cpu.yaml upstream).
+# No large pretrained metric models are needed, so it is safe to run on a
+# laptop. Used by default by scripts/evaluate.py (--versa_config); point at a
+# heavier VERSA config (e.g. its egs/speech.yaml, which adds UTMOS, DNSMOS,
+# speaker similarity, etc.) for a more thorough but much slower evaluation.
 
 # mcd f0 related metrics
 #  -- mcd: mel cepstral distortion

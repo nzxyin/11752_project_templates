@@ -1,15 +1,15 @@
-"""PLACEHOLDER acoustic model -- embedding + a tiny Transformer encoder + a
-naive length-matched linear mel projection. Exists ONLY to make
+"""PLACEHOLDER acoustic model: embedding, a tiny Transformer encoder, and a
+naive length-matched linear mel projection. It exists only to make
 `experiment=debug` and scripts/synthesize.py|evaluate.py runnable end-to-end
-out of the box as an integration smoke test.
+out of the box, as an integration smoke test.
 
-This is NOT a real TTS system: there is no learned duration/alignment model,
-just a fixed frames-per-phoneme heuristic used at inference to decide how long
-the output should be, and per-sample linear interpolation (not length
-regulation) to stretch the encoder output to that length during training too.
-Replace `network` in configs/model/example.yaml with a real FastSpeech2 /
-Matcha-TTS / F5-TTS implementation satisfying src.models.base.BaseTTSModel --
-see README.md's "The model contract" section.
+This is not a real TTS system. There is no learned duration or alignment
+model, only a fixed frames-per-phoneme heuristic used at inference to decide
+how long the output should be, and per-sample linear interpolation (not
+length regulation) to stretch the encoder output to that length during
+training as well. Replace `network` in configs/model/example.yaml with a
+real FastSpeech2, Matcha-TTS, or F5-TTS implementation satisfying
+src.models.base.BaseTTSModel. See README.md's "The model contract" section.
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ class ExampleTTSModel(BaseTTSModel):
 
     @staticmethod
     def _length_match(enc: torch.Tensor, src_lens: torch.Tensor, target_lens: torch.Tensor, max_target_len: int) -> torch.Tensor:
-        """Per-sample linear interpolation along time -- a naive placeholder for
+        """Per-sample linear interpolation along time, a naive placeholder for
         real duration prediction / length regulation. (B, T_text, H) -> (B, max_target_len, H)."""
         out = enc.new_zeros(enc.shape[0], max_target_len, enc.shape[-1])
         for i in range(enc.shape[0]):
