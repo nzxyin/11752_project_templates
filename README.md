@@ -422,3 +422,9 @@ A few things this means for fitting it into `BaseTTSModel`
   `scripts/preprocess.py` (and `data.n_mel_channels` in
   `configs/data/ljspeech.yaml`) to match, update `src/vocoders/mel.py` and
   `src/vocoders/__init__.py`'s default checkpoint, and re-preprocess.
+
+## License
+
+MIT. See [LICENSE](LICENSE). The vendored BigVGAN generator
+(`src/vocoders/bigvgan/`) is MIT-licensed from NVIDIA; see its
+`THIRD_PARTY_NOTICES.md` for details.
