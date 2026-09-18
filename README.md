@@ -14,11 +14,10 @@ inference, and evaluation for free.
 **This template does not implement a real TTS model.** `src/models/example.py`
 is a minimal, deliberately-naive placeholder (no learned duration modeling)
 that exists only so every command below actually runs out of the box, as an
-integration smoke test. A full working **FastSpeech2** implementation built on
-top of an earlier version of this template lives on the [`fastspeech2`
-branch](../../tree/fastspeech2) -- a useful reference for what a real
-implementation looks like, and a fine starting point if FastSpeech2 is
-specifically what you want.
+integration smoke test. `fastspeech2`, `matcha-tts`, and `f5-tts` branches
+start from this same template, tailored (paper reference + a short pointer to
+that architecture's shape) for each target model -- see that branch's README
+for specifics.
 
 ## Project layout
 
