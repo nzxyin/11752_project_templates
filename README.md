@@ -141,6 +141,15 @@ Linux/WSL/conda-forge (its `pynini` dependency has no native Windows wheels).
 ## Setup ([uv](https://docs.astral.sh/uv/))
 
 ```bash
+git clone -b fastspeech2 https://github.com/nzxyin/11752_project_templates.git
+cd 11752_project_templates
+```
+
+If you don't have [uv](https://docs.astral.sh/uv/) yet, install it first (see
+[uv's installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+-- one-liners for Linux/macOS/Windows are there), then sync dependencies:
+
+```bash
 uv sync --extra preprocess --extra synthesize --extra vocoder
 ```
 
